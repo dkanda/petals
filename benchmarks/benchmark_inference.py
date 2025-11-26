@@ -9,8 +9,8 @@ import torch
 from hivemind.utils.logging import get_logger
 from transformers import AutoTokenizer
 
-from petals import AutoDistributedModelForCausalLM
-from petals.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
+from heliopetals import AutoDistributedModelForCausalLM
+from heliopetals.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
 
 logger = get_logger()
 
