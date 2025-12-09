@@ -81,14 +81,25 @@ python3 -m petals.cli.run_server meta-llama/Meta-Llama-3.1-405B-Instruct
 
 🏆 **Thank you!** Once you load and host 10+ blocks, we can show your name or link on the [swarm monitor](https://health.petals.dev) as a way to say thanks. You can specify them with `--public_name YOUR_NAME`.
 
-## How does it work?
+## 🏗️ High-Level Architecture
 
-- You load a small part of the model, then join a [network](https://health.petals.dev) of people serving the other parts. Single‑batch inference runs at up to **6 tokens/sec** for **Llama 2** (70B) and up to **4 tokens/sec** for **Falcon** (180B) — enough for [chatbots](https://chat.petals.dev) and interactive apps.
-- You can employ any fine-tuning and sampling methods, execute custom paths through the model, or see its hidden states. You get the comforts of an API with the flexibility of **PyTorch** and **🤗 Transformers**.
+Petals operates as a decentralized swarm with three key components:
+
+1.  **Client**: The user's application (e.g., a chatbot or fine-tuning script). It acts as a "driver", discovering servers via the DHT and routing the model's forward/backward passes through them.
+2.  **Server (Compute Node)**: A GPU-equipped node that hosts a specific set of model blocks (layers). It performs the heavy computation (matrix multiplications) for the swarm.
+3.  **DHT Node**: A lightweight coordination peer. Unlike the compute servers, these nodes do not store model weights but help maintain the Distributed Hash Table (DHT), which serves as the network's service registry.
 
 <p align="center">
     <img src="https://i.imgur.com/RTYF3yW.png" width="800">
 </p>
+
+### System Setup & Commands
+
+| Node Type | Function | Setup Command |
+| :--- | :--- | :--- |
+| **Compute Client** | Runs the application logic | `pip install petals` <br> *(Use via `AutoDistributedModelForCausalLM`)* |
+| **Compute Server** | Hosts model blocks on GPU | `python -m petals.cli.run_server meta-llama/Meta-Llama-3.1-405B-Instruct` |
+| **DHT Node** | Coordinates the network (CPU-only) | `python -m petals.cli.run_dht --host_maddrs /ip4/0.0.0.0/tcp/31337` |
 
 <p align="center">
     📜 &nbsp;<b><a href="https://arxiv.org/pdf/2209.01188.pdf">Read paper</a></b>
