@@ -129,7 +129,7 @@ class DistributedDeepseekModel(DefaultRevisionMixin, FromPretrainedMixin, PTuneM
             past_key_values=past_key_values,
             hidden_states=None,
             attentions=None,
-            router_logits=None
+            router_logits=None,
         )
 
     @property

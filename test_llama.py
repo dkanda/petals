@@ -1,4 +1,5 @@
 from transformers import AutoTokenizer
+
 from petals import AutoDistributedModelForCausalLM
 
 # Choose any model available at https://health.petals.dev
