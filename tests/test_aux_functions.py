@@ -8,6 +8,10 @@ from hivemind import nested_compare, nested_flatten
 from petals import AutoDistributedConfig
 from petals.server.throughput import measure_compute_rps
 from petals.utils.convert_block import QuantType
+import requests
+from hivemind.p2p import PeerID
+
+from petals.server.reachability import validate_reachability
 from petals.utils.misc import DUMMY, is_dummy
 from petals.utils.packaging import pack_args_kwargs, unpack_args_kwargs
 from test_utils import MODEL_NAME
@@ -73,3 +77,29 @@ def test_pack_inputs():
             assert torch.all(original == restored)
         else:
             assert original == restored
+
+
+def test_validate_reachability(monkeypatch):
+    monkeypatch.setenv("PETALS_IGNORE_DEPENDENCY_VERSIONS", "1")
+
+    peer_id = PeerID.from_base58("Qme6XdVTfK4BGN8gD2qt93J2SGsSkCo35aTzSJ5T16u3xe")
+
+    class MockSuccess:
+        def json(self):
+            return {"success": True}
+
+        def raise_for_status(self):
+            pass
+
+    with monkeypatch.context() as m:
+        m.setattr(requests, "get", lambda *args, **kwargs: MockSuccess())
+        validate_reachability(peer_id, wait_time=0.1, retry_delay=0.05)
+
+    with monkeypatch.context() as m:
+        m.setattr(
+            requests,
+            "get",
+            lambda *args, **kwargs: (_ for _ in ()).throw(requests.exceptions.ConnectionError),
+        )
+        with pytest.raises(RuntimeError, match=r"Could not check server reachability"):
+            validate_reachability(peer_id, wait_time=0.1, retry_delay=0.05)

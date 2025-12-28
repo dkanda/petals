@@ -21,7 +21,9 @@ logger = get_logger(__name__)
 
 def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float = 15) -> None:
     """verify that your peer is reachable from a (centralized) validator, whether directly or through a relay"""
-    for attempt_no in range(math.floor(wait_time / retry_delay) + 1):
+    response = None
+    n_attempts = math.floor(wait_time / retry_delay) + 1
+    for attempt_no in range(n_attempts):
         try:
             r = requests.get(f"{REACHABILITY_API_URL}/api/v1/is_reachable/{peer_id}", timeout=10)
             r.raise_for_status()
@@ -35,10 +37,18 @@ def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float
                 # Usually, libp2p manages to set up relays before we finish loading blocks.
                 # In other cases, we may need to wait for up to `wait_time` seconds before it's done.
                 logger.info("Detected a NAT or a firewall, connecting to libp2p relays. This takes a few minutes")
-            time.sleep(retry_delay)
         except Exception as e:
-            logger.warning(f"Skipping reachability check because health.petals.dev is down: {repr(e)}")
-            return
+            response = None  # In case the previous attempt succeeded and this one failed
+            logger.warning(f"Could not check reachability via health.petals.dev: {repr(e)}")
+
+        if attempt_no < n_attempts - 1:
+            time.sleep(retry_delay)
+
+    if response is None:
+        raise RuntimeError(
+            f"Could not check server reachability, attempts={n_attempts}. "
+            f"Please check your internet connection or petals status page at https://health.petals.dev"
+        )
 
     raise RuntimeError(
         f"Server has not become reachable from the Internet:\n\n"
