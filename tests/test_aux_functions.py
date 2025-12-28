@@ -1,18 +1,26 @@
+import json
+import os
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
 import pytest
 import requests
 import torch
+import transformers
 from hivemind import nested_compare, nested_flatten
 from hivemind.p2p import PeerID
 
 from petals import AutoDistributedConfig
+from petals.models.gemma3 import DistributedGemma3Config
 from petals.server.reachability import validate_reachability
 from petals.server.throughput import measure_compute_rps
 from petals.utils.convert_block import QuantType
 from petals.utils.misc import DUMMY, is_dummy
 from petals.utils.packaging import pack_args_kwargs, unpack_args_kwargs
+
+os.environ["INITIAL_PEERS"] = "dummy_peer"
 from test_utils import MODEL_NAME
 
 
@@ -33,7 +41,8 @@ def test_bnb_not_imported_when_unnecessary():
 @pytest.mark.parametrize("inference", [False, True])
 @pytest.mark.parametrize("n_tokens", [1, 16])
 @pytest.mark.parametrize("tensor_parallel", [False, True])
-def test_compute_throughput(inference: bool, n_tokens: int, tensor_parallel: bool):
+def test_compute_throughput(inference: bool, n_tokens: int, tensor_parallel: bool, monkeypatch):
+    monkeypatch.setenv("INITIAL_PEERS", "dummy_peer")
     config = AutoDistributedConfig.from_pretrained(MODEL_NAME)
     if tensor_parallel and config.model_type != "bloom":
         pytest.skip("Tensor parallelism is implemented only for BLOOM for now")
@@ -53,7 +62,8 @@ def test_compute_throughput(inference: bool, n_tokens: int, tensor_parallel: boo
 
 
 @pytest.mark.forked
-def test_pack_inputs():
+def test_pack_inputs(monkeypatch):
+    monkeypatch.setenv("INITIAL_PEERS", "dummy_peer")
     x = torch.ones(3)
     y = torch.arange(5)
     z = DUMMY
@@ -80,6 +90,7 @@ def test_pack_inputs():
 
 def test_validate_reachability(monkeypatch):
     monkeypatch.setenv("PETALS_IGNORE_DEPENDENCY_VERSIONS", "1")
+    monkeypatch.setenv("INITIAL_PEERS", "dummy_peer")
 
     peer_id = PeerID.from_base58("Qme6XdVTfK4BGN8gD2qt93J2SGsSkCo35aTzSJ5T16u3xe")
 
@@ -102,3 +113,26 @@ def test_validate_reachability(monkeypatch):
         )
         with pytest.raises(RuntimeError, match=r"Could not check server reachability"):
             validate_reachability(peer_id, wait_time=0.1, retry_delay=0.05)
+
+
+def test_gemma_3_config(monkeypatch):
+    monkeypatch.setenv("INITIAL_PEERS", "dummy_peer")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        config_path = Path(tmpdir) / "config.json"
+        with open(config_path, "w") as f:
+            json.dump({"model_type": "gemma2"}, f)
+
+        config = AutoDistributedConfig.from_pretrained(tmpdir)
+        assert isinstance(config, DistributedGemma3Config)
+        assert config.dht_prefix == f"{Path(tmpdir).name}-hf"
+
+        with open(config_path, "w") as f:
+            json.dump(
+                {
+                    "model_type": "gemma2",
+                    "quantization_config": {"load_in_8bit": True},
+                },
+                f,
+            )
+        config = AutoDistributedConfig.from_pretrained(tmpdir)
+        assert not hasattr(config, "quantization_config")
