@@ -3,8 +3,23 @@ import re
 import time
 from typing import List, Optional, Sequence, Union
 
-import bitsandbytes as bnb
 import torch
+
+if torch.cuda.is_available():
+    import bitsandbytes as bnb
+else:
+    # Mock bitsandbytes on CPU-only systems.
+    # This is needed because bitsandbytes unconditionally imports triton, which is not available on CPU.
+    # The mock provides the necessary attributes for type checking in create_lora_adapter.
+    class _bnb_mock:
+        class nn:
+            class Linear8bitLt:
+                pass
+
+            class Linear4bit:
+                pass
+
+    bnb = _bnb_mock()
 import torch.nn as nn
 import transformers
 from accelerate import init_empty_weights
@@ -181,12 +196,21 @@ class LoraLinear(AdapterContextMixin, lora.Linear):
         self.is_target_conv_1d_layer = False
 
 
-class LoraLinear8bitLt(LoraLinear, lora.Linear8bitLt):
-    """LoRA linear 8-bit with outliers that uses adapter selected via using_adapter"""
+if torch.cuda.is_available():
 
+    class LoraLinear8bitLt(LoraLinear, lora.Linear8bitLt):
+        """LoRA linear 8-bit with outliers that uses adapter selected via using_adapter"""
 
-class LoraLinear4bit(LoraLinear, lora.Linear4bit):
-    """LoRA linear 4-bit that uses adapter selected via using_adapter"""
+    class LoraLinear4bit(LoraLinear, lora.Linear4bit):
+        """LoRA linear 4-bit that uses adapter selected via using_adapter"""
+
+else:
+
+    class LoraLinear8bitLt(LoraLinear):
+        """Dummy class for CPU-only environments"""
+
+    class LoraLinear4bit(LoraLinear):
+        """Dummy class for CPU-only environments"""
 
 
 def create_lora_adapter(block):
