@@ -13,11 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   git \
   && apt-get clean autoclean && rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O install_miniconda.sh && \
-  bash install_miniconda.sh -b -p /opt/conda && rm install_miniconda.sh
+RUN wget https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh -O install_miniforge.sh && \
+  bash install_miniforge.sh -b -p /opt/conda && rm install_miniforge.sh
 ENV PATH="/opt/conda/bin:${PATH}"
 
-RUN conda config --set anaconda_token yes
 RUN conda install python~=3.10.12 pip && \
     pip install --no-cache-dir "torch>=1.12" && \
     conda clean --all && rm -rf ~/.cache/pip
