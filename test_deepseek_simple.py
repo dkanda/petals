@@ -1,6 +1,7 @@
-from transformers import AutoTokenizer
-from petals import AutoDistributedModelForCausalLM
 import torch
+from transformers import AutoTokenizer
+
+from petals import AutoDistributedModelForCausalLM
 
 # DeepSeek V3 model ID
 model_name = "deepseek-ai/DeepSeek-V3"

@@ -2,9 +2,7 @@ from typing import Optional, Tuple
 
 import torch
 from transformers.cache_utils import DynamicCache
-from transformers.modeling_attn_mask_utils import (
-    _prepare_4d_causal_attention_mask,
-)
+from transformers.modeling_attn_mask_utils import _prepare_4d_causal_attention_mask
 
 from petals.models.deepseek.configuration_deepseek import DeepseekV3Config
 from petals.models.deepseek.modeling_deepseek import DeepseekV3DecoderLayer

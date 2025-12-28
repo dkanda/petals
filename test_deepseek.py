@@ -1,8 +1,10 @@
-from transformers import AutoTokenizer, AutoConfig
+import os
+
+import torch
+from transformers import AutoConfig, AutoTokenizer
+
 from petals import AutoDistributedModelForCausalLM
 from petals.models.deepseek.config import DistributedDeepseekConfig
-import torch
-import os
 
 # DeepSeek V3 model ID
 model_name = "deepseek-ai/DeepSeek-V3"

@@ -2,10 +2,11 @@ import os
 from typing import Optional, Union
 
 from hivemind import get_logger
-from petals.models.deepseek.configuration_deepseek import DeepseekV3Config
+
 from petals.client.config import ClientConfig
 from petals.client.lm_head import LMHeadConfig
 from petals.client.ptune import PTuneConfig
+from petals.models.deepseek.configuration_deepseek import DeepseekV3Config
 
 logger = get_logger(__name__)
 
