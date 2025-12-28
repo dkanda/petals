@@ -32,10 +32,10 @@ class DistributedDeepseekConfig(DeepseekV3Config, ClientConfig, PTuneConfig, LMH
 
         result = super().from_pretrained(model_name_or_path, *args, dht_prefix=dht_prefix, **kwargs)
         config = result[0] if isinstance(result, tuple) else result
-        
+
         # Patch for Petals compatibility: clear quantization_config if present to avoid loading errors
         # on clients that don't support the model's native quantization (e.g. fp8)
         if hasattr(config, "quantization_config"):
             del config.quantization_config
-            
+
         return result
