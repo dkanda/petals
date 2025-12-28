@@ -764,6 +764,7 @@ class ModuleAnnouncerThread(threading.Thread):
         pinged_servers.discard(self.dht.peer_id)
         # Sample servers hosting the block after the last one (most likely continuations) separately
         pinged_servers |= set(sample_up_to(module_infos[-1].servers, self.max_pinged))
+        logger.debug(f"Pinging {len(pinged_servers)} servers")
         self.ping_aggregator.ping(list(pinged_servers))
 
 
