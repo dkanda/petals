@@ -8,6 +8,7 @@ from hivemind import nested_compare, nested_flatten
 from hivemind.p2p import PeerID
 
 from petals import AutoDistributedConfig
+from petals.data_structures import ServerInfo, ServerState
 from petals.server.reachability import validate_reachability
 from petals.server.throughput import measure_compute_rps
 from petals.utils.convert_block import QuantType
@@ -102,3 +103,18 @@ def test_validate_reachability(monkeypatch):
         )
         with pytest.raises(RuntimeError, match=r"Could not check server reachability"):
             validate_reachability(peer_id, wait_time=0.1, retry_delay=0.05)
+
+
+def test_server_info_from_tuple():
+    valid_info = ServerInfo.from_tuple((ServerState.ONLINE.value, 100.0, {"version": "2.1.0"}))
+    assert valid_info.state == ServerState.ONLINE
+    assert valid_info.throughput == 100.0
+    assert valid_info.version == "2.1.0"
+
+    # Test with invalid data
+    with pytest.raises(ValueError, match="expected a sequence of at least 2 elements"):
+        ServerInfo.from_tuple(None)
+    with pytest.raises(ValueError, match="expected a sequence of at least 2 elements"):
+        ServerInfo.from_tuple((1,))
+    with pytest.raises(ValueError, match="expected a dict of extra info"):
+        ServerInfo.from_tuple((1, 100.0, "not-a-dict"))
