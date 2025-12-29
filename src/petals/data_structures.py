@@ -68,8 +68,17 @@ class ServerInfo:
 
     @classmethod
     def from_tuple(cls, source: tuple):
+        if not isinstance(source, (list, tuple)) or len(source) < 2:
+            raise ValueError(f"{cls.__name__}.from_tuple() expected a sequence of at least 2 elements, got {source}")
+
         state, throughput = source[:2]
         extra_info = source[2] if len(source) > 2 else {}
+
+        if not isinstance(extra_info, dict):
+            raise ValueError(
+                f"{cls.__name__}.from_tuple() expected a dict of extra info, got {type(extra_info)}"
+            )
+
         # pydantic will validate existing fields and ignore extra ones
         return cls(state=ServerState(state), throughput=throughput, **extra_info)
 
