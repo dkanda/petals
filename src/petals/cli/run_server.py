@@ -119,13 +119,8 @@ def main():
     hw_group.add_argument('--cache_dir', type=str, default=None,
                         help='Path to a directory in which a downloaded pretrained model configuration should be cached if the standard cache should not be used.')
     hw_group.add_argument("--max_disk_space", type=str, default=None,
-                        help="Maximal disk space used for caches. Example: 50GB, 100GiB (GB != GiB here). "
-                             "Default: unlimited. "
-                             "For bigscience/bloom-petals, this default means that the server may use up to "
-                             "min(free_disk_space, 350GB) in the worst case, which happens when the server runs "
-                             "for a long time and caches all model blocks after a number of rebalancings. "
-                             "However, this worst case is unlikely, expect the server to consume "
-                             "the disk space equal to 2-4x of your GPU memory on average.")
+                        help="Maximum disk space for storing blocks, e.g., 50GB or 100GiB. Default: unlimited. "
+                             "If not set, the server may use up to 350GB.")
     hw_group.add_argument('--max_alloc_timeout', type=float, default=600,
                         help="If the cache is full, the server will wait for memory to be freed up to this many seconds"
                              " before rejecting the request")
