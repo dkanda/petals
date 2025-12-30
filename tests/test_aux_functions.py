@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
@@ -14,6 +15,7 @@ from hivemind.p2p import PeerID
 
 from petals import AutoDistributedConfig
 from petals.models.gemma3 import DistributedGemma3Config
+from petals.models.deepseek.config import DistributedDeepseekConfig
 from petals.server.reachability import validate_reachability
 from petals.server.throughput import measure_compute_rps
 from petals.utils.convert_block import QuantType
@@ -136,3 +138,43 @@ def test_gemma_3_config(monkeypatch):
             )
         config = AutoDistributedConfig.from_pretrained(tmpdir)
         assert not hasattr(config, "quantization_config")
+@patch("petals.models.deepseek.config.DeepseekV3Config.from_pretrained")
+def test_deepseek_dht_prefix(mock_from_pretrained):
+    """
+    This test ensures that the DHT prefix for DeepSeek models is correctly generated.
+    The prefix should be derived from the model name, with slashes replaced by hyphens,
+    and have a "-hf" suffix.
+    """
+    mock_config = MagicMock()
+    mock_from_pretrained.return_value = mock_config
+
+    result_config = DistributedDeepseekConfig.from_pretrained("deepseek-ai/deepseek-v3-large-base")
+
+    # Check that the DHT prefix was correctly calculated and passed to the superclass method
+    mock_from_pretrained.assert_called_once()
+    _, kwargs = mock_from_pretrained.call_args
+    assert kwargs.get("dht_prefix") == "deepseek-v3-large-base-hf"
+    assert result_config == mock_config
+
+
+@patch("petals.models.deepseek.config.DeepseekV3Config.from_pretrained")
+def test_deepseek_quantization_config_removal(mock_from_pretrained):
+    """
+    This test ensures that the `quantization_config` attribute is removed from the
+    DeepSeek model configuration. This is necessary for compatibility with clients
+    that do not support the model's native quantization.
+    """
+    mock_config = MagicMock()
+    # Set the attribute we expect to be deleted
+    mock_config.quantization_config = {"bits": 8}
+
+    # from_pretrained should return the config object directly
+    mock_from_pretrained.return_value = mock_config
+
+    # The model name here is just a dummy since the call is mocked
+    result_config = DistributedDeepseekConfig.from_pretrained("dummy-model")
+
+    # Assert that the attribute was deleted
+    assert not hasattr(mock_config, "quantization_config")
+    # Also check we got the right object back
+    assert result_config == mock_config
