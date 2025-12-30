@@ -7,7 +7,6 @@ import math
 from functools import partial
 from typing import Dict, List, Optional, Sequence, Union
 
-import pydantic.v1 as pydantic
 from hivemind.dht import DHT, DHTNode, DHTValue
 from hivemind.p2p import PeerID
 from hivemind.utils import DHTExpiration, MPFuture, get_dht_time, get_logger
@@ -127,8 +126,6 @@ async def _get_remote_module_infos(
                     continue
 
                 module_info.servers[peer_id] = server_info
-            except pydantic.ValidationError as e:
-                logger.warning(f"Failed to parse peer info for uid={module_info.uid}, peer_id={peer_id}: {e}")
             except (TypeError, ValueError) as e:
                 logger.warning(f"Incorrect peer entry for uid={module_info.uid}, peer_id={peer_id}: {e}")
     return modules

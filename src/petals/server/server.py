@@ -316,15 +316,7 @@ class Server:
             )
 
         num_blocks = math.floor((total_memory - autograd_memory) / total_memory_per_block)
-        if num_blocks < 1:
-            logger.error(
-                f"Your GPU does not have enough memory to serve at least one block. "
-                f"Available memory: {total_memory / gib:.2f} GiB, "
-                f"estimated memory per block: {total_memory_per_block / gib:.2f} GiB, "
-                f"autograd overhead: {autograd_memory / gib:.2f} GiB. "
-                f"Please decrease --attn_cache_tokens or make other changes to free up your GPU memory."
-            )
-            raise ValueError("Not enough GPU memory to serve at least one block")
+        assert num_blocks >= 1, "Your GPU does not have enough memory to serve at least one block"
 
         num_blocks = min(num_blocks, self.block_config.num_hidden_layers)
         logger.info(
