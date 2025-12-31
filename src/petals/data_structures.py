@@ -83,8 +83,13 @@ class ServerInfo:
         if not isinstance(extra_info, dict):
             raise TypeError("info[2] must be a dict")
 
+        try:
+            state = ServerState(state)
+        except ValueError:
+            raise ValueError(f"Invalid server state: {state}")
+
         # pydantic will validate existing fields and ignore extra ones
-        return cls(state=ServerState(state), throughput=throughput, **extra_info)
+        return cls(state=state, throughput=throughput, **extra_info)
 
 
 @dataclasses.dataclass

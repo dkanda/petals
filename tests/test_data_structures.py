@@ -29,3 +29,6 @@ def test_server_info_from_tuple():
 
     with pytest.raises(TypeError, match="info\\[2\\] must be a dict"):
         ServerInfo.from_tuple((ServerState.ONLINE.value, 10.0, "not a dict"))
+
+    with pytest.raises(ValueError, match="Invalid server state: 999"):
+        ServerInfo.from_tuple((999, 10.0, {}))
