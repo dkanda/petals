@@ -1,4 +1,3 @@
-import argparse
 import logging
 
 import configargparse
@@ -7,6 +6,7 @@ from hivemind.proto.runtime_pb2 import CompressionType
 from hivemind.utils import limits
 from hivemind.utils.logging import get_logger
 from humanfriendly import parse_size
+from rich.argparse import RichHelpFormatter
 
 from petals.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
 from petals.server.server import Server
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 def main():
     # fmt:off
     parser = configargparse.ArgParser(default_config_files=["config.yml"],
-                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+                                      formatter_class=RichHelpFormatter)
     parser.add('-c', '--config', required=False, is_config_file=True, help='config file path')
 
     basic_group = parser.add_argument_group("Basic")
