@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,6 +17,39 @@ from petals.utils.convert_block import QuantType
 from petals.utils.misc import DUMMY, is_dummy
 from petals.utils.packaging import pack_args_kwargs, unpack_args_kwargs
 from test_utils import MODEL_NAME
+from petals.utils.dht import _get_remote_module_infos
+from petals.data_structures import ServerState
+
+
+@pytest.mark.asyncio
+@patch("petals.utils.dht.PeerID")
+async def test_get_remote_module_infos_with_corrupted_data(mock_peer_id):
+    dht = SimpleNamespace(
+        num_workers=1,
+        run_coroutine=lambda coro, return_future: coro(None, dht),
+    )
+    async def _get_many(*args, **kwargs):
+        return {
+            "fake.uid.0": SimpleNamespace(
+                value={
+                    "peer1": SimpleNamespace(value=(ServerState.ONLINE.value, 1.0, {})),
+                    "peer2": None,
+                }
+            )
+        }
+
+    node = SimpleNamespace(get_many=_get_many)
+
+    infos = await _get_remote_module_infos(
+        dht,
+        node,
+        ["fake.uid.0"],
+        active_adapter=None,
+        expiration_time=1234567890.0,
+        latest=False,
+    )
+    assert len(infos) == 1
+    assert len(infos[0].servers) == 1
 
 
 def test_bnb_not_imported_when_unnecessary():

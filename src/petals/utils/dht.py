@@ -119,6 +119,10 @@ async def _get_remote_module_infos(
 
         for peer_id, server_info in metadata.value.items():
             try:
+                if server_info is None:
+                    logger.warning(f"Skipping incorrect peer entry for uid={module_info.uid}, peer_id={peer_id}: {server_info}")
+                    continue
+
                 peer_id = PeerID.from_base58(peer_id)
                 server_info = ServerInfo.from_tuple(server_info.value)
 
@@ -129,7 +133,7 @@ async def _get_remote_module_infos(
                 module_info.servers[peer_id] = server_info
             except pydantic.ValidationError as e:
                 logger.warning(f"Failed to parse peer info for uid={module_info.uid}, peer_id={peer_id}: {e}")
-            except (TypeError, ValueError) as e:
+            except (TypeError, ValueError, AttributeError) as e:
                 logger.warning(f"Incorrect peer entry for uid={module_info.uid}, peer_id={peer_id}: {e}")
     return modules
 
