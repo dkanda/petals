@@ -129,6 +129,26 @@ Advanced guides:
 
 Please see **Section 3.3** of our [paper](https://arxiv.org/pdf/2209.01188.pdf).
 
+### 🛠️ Development
+
+This project uses `pre-commit` to enforce code style and formatting. To get started, install the `pre-commit` hooks:
+
+```bash
+# Install development dependencies, including pre-commit
+pip install -e .[dev]
+
+# Install the pre-commit hooks
+pre-commit install
+```
+
+Now, `black` and `isort` will run automatically on any staged files before you commit, ensuring your changes match the project's coding style. You can also run the hooks manually on all files:
+
+```bash
+pre-commit run --all-files
+```
+
+This will ensure your contributions are automatically formatted and aligned with the project's standards.
+
 ### 🛠️ Contributing
 
 Please see our [FAQ](https://github.com/bigscience-workshop/petals/wiki/FAQ:-Frequently-asked-questions#contributing) on contributing.
