@@ -88,6 +88,11 @@ class ServerInfo:
         except ValueError:
             raise ValueError(f"Invalid server state: {state}")
 
+        known_fields = {f.name for f in dataclasses.fields(cls)}
+        unknown_fields = set(extra_info.keys()) - known_fields
+        if unknown_fields:
+            raise ValueError(f"Unknown fields in ServerInfo: {sorted(unknown_fields)}")
+
         # pydantic will validate existing fields and ignore extra ones
         return cls(state=state, throughput=throughput, **extra_info)
 
