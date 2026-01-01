@@ -1,0 +1,20 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install git (needed for pip install from git repos)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    && apt-get clean autoclean && rm -rf /var/lib/apt/lists/*
+
+# Copy the petals source code
+COPY . /app
+
+# Install petals
+RUN pip install --no-cache-dir -e .
+
+# Expose the default DHT port (Railway will set PORT env var)
+EXPOSE 31337
+
+# Run the DHT server using Railway's PORT if available, otherwise default to 31337
+CMD python -m petals.cli.run_dht --host_maddrs /ip4/0.0.0.0/tcp/${PORT:-31337}
