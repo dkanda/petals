@@ -120,7 +120,9 @@ async def _get_remote_module_infos(
         for peer_id, server_info in metadata.value.items():
             try:
                 if server_info is None:
-                    logger.warning(f"Skipping incorrect peer entry for uid={module_info.uid}, peer_id={peer_id}: {server_info}")
+                    logger.warning(
+                        f"Skipping incorrect peer entry for uid={module_info.uid}, peer_id={peer_id}: {server_info}"
+                    )
                     continue
 
                 peer_id = PeerID.from_base58(peer_id)
