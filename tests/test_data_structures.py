@@ -10,9 +10,13 @@ def test_server_info_from_tuple():
     assert info.throughput == 10.0
     assert info.public_name == "test_server"
 
-    # Valid tuple with an unknown extra field (should be ignored)
-    info_with_unknown = ServerInfo.from_tuple((ServerState.ONLINE.value, 10.0, {"foo": "bar"}))
-    assert not hasattr(info_with_unknown, "foo")
+    # Tuple with an unknown extra field should raise a ValueError
+    with pytest.raises(ValueError, match=r"Unknown fields in ServerInfo: \['foo'\]"):
+        ServerInfo.from_tuple((ServerState.ONLINE.value, 10.0, {"foo": "bar"}))
+
+    # Tuple with multiple unknown extra fields should raise a ValueError
+    with pytest.raises(ValueError, match=r"Unknown fields in ServerInfo: \['bar', 'foo'\]"):
+        ServerInfo.from_tuple((ServerState.ONLINE.value, 10.0, {"foo": "baz", "bar": "qux"}))
 
     # Malformed tuples that should raise errors
     with pytest.raises(TypeError, match="info must be a tuple"):
