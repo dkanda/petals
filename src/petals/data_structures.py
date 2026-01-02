@@ -68,32 +68,30 @@ class ServerInfo:
 
     @classmethod
     def from_tuple(cls, source: tuple):
-        if not isinstance(source, tuple):
-            raise TypeError("info must be a tuple")
-        if len(source) < 2:
-            raise ValueError("info must have at least 2 elements")
-        if not isinstance(source[0], int):
-            raise TypeError("info[0] must be an int")
-        if not isinstance(source[1], (float, int)):
-            raise TypeError("info[1] must be a float or int")
+        if not isinstance(source, tuple) or len(source) != 3:
+            raise TypeError(f"ServerInfo.from_tuple expected a 3-element tuple, got {type(source).__name__} of length {len(source)}")
 
-        state, throughput = source[:2]
-        extra_info = source[2] if len(source) > 2 else {}
+        state_val, throughput, extra_info = source
 
+        if not isinstance(state_val, int):
+            raise TypeError(f"info[0] must be an int, not {type(state_val).__name__}")
+        if not isinstance(throughput, (float, int)):
+            raise TypeError(f"info[1] must be a float or int, not {type(throughput).__name__}")
         if not isinstance(extra_info, dict):
-            raise TypeError("info[2] must be a dict")
+            raise TypeError(f"info[2] must be a dict, not {type(extra_info).__name__}")
 
         try:
-            state = ServerState(state)
+            state = ServerState(state_val)
         except ValueError:
-            raise ValueError(f"Invalid server state: {state}")
+            raise ValueError(f"Invalid server state index: {state_val}")
 
+        # For forward compatibility, we strictly reject fields that are not in the current version of ServerInfo.
+        # This prevents bugs where a server running an older version of petals silently ignores data from a newer one.
         known_fields = {f.name for f in dataclasses.fields(cls)}
         unknown_fields = set(extra_info.keys()) - known_fields
         if unknown_fields:
             raise ValueError(f"Unknown fields in ServerInfo: {sorted(unknown_fields)}")
 
-        # pydantic will validate existing fields and ignore extra ones
         return cls(state=state, throughput=throughput, **extra_info)
 
 
