@@ -402,7 +402,8 @@ class Server:
             reserved_vram = torch.cuda.memory_reserved(self.device)
             gib = 1024**3
             logger.info(
-                f"Cleaning up, left {allocated_vram / gib:.1f} GiB allocated memory, "
+                f"Cleaning up {self.server_info.public_name or self.dht.peer_id}, "
+                f"left {allocated_vram / gib:.1f} GiB allocated memory, "
                 f"{reserved_vram / gib:.1f} GiB reserved memory"
             )
         elif self.device.type == "mps":
