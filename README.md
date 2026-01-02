@@ -8,6 +8,8 @@
     <br>
 </p>
 
+> **Note:** This is a fork of the [Petals project](https://github.com/bigscience-workshop/petals) with custom modifications and Docker images available at `erthr/petals`.
+
 Generate text with distributed **Llama 3.1** (up to 405B), **Mixtral** (8x22B), **Falcon** (40B+) or **BLOOM** (176B) and fine‑tune them for your own tasks &mdash; right from your desktop computer or Google Colab:
 
 ```python
@@ -59,7 +61,7 @@ python -m petals.cli.run_server meta-llama/Meta-Llama-3.1-405B-Instruct
 
 ```bash
 sudo docker run -p 31330:31330 --ipc host --gpus all --volume petals-cache:/cache --rm \
-    learningathome/petals:main \
+    erthr/petals:main \
     python -m petals.cli.run_server --port 31330 meta-llama/Meta-Llama-3.1-405B-Instruct
 ```
 
