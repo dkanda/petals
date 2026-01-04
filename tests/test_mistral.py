@@ -1,10 +1,11 @@
-import pytest
-import torch
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import hivemind
-from petals.models.mistral import DistributedMistralForCausalLM, DistributedMistralConfig
+import pytest
+import torch
+
 from petals.client.remote_sequential import RemoteSequenceManager
+from petals.models.mistral import DistributedMistralConfig, DistributedMistralForCausalLM
 
 
 @pytest.fixture

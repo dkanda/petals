@@ -10,15 +10,15 @@ from hivemind import nested_compare, nested_flatten
 from hivemind.p2p import PeerID
 
 from petals import AutoDistributedConfig
+from petals.data_structures import ServerState
 from petals.models.deepseek.config import DistributedDeepseekConfig
 from petals.server.reachability import validate_reachability
 from petals.server.throughput import measure_compute_rps
 from petals.utils.convert_block import QuantType
+from petals.utils.dht import _get_remote_module_infos
 from petals.utils.misc import DUMMY, is_dummy
 from petals.utils.packaging import pack_args_kwargs, unpack_args_kwargs
 from test_utils import MODEL_NAME
-from petals.utils.dht import _get_remote_module_infos
-from petals.data_structures import ServerState
 
 
 @pytest.mark.asyncio
@@ -28,6 +28,7 @@ async def test_get_remote_module_infos_with_corrupted_data(mock_peer_id):
         num_workers=1,
         run_coroutine=lambda coro, return_future: coro(None, dht),
     )
+
     async def _get_many(*args, **kwargs):
         return {
             "fake.uid.0": SimpleNamespace(
