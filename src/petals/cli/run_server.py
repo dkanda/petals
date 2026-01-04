@@ -26,7 +26,7 @@ def main():
     model_group = basic_group.add_mutually_exclusive_group(required=True)
     model_group.add_argument('--converted_model_name_or_path', type=str, default=None,
                        help="path or name of a pretrained model, converted with cli/convert_model.py")
-    model_group.add_argument('model', nargs='?', type=str, help="same as --converted_model_name_or_path")
+    model_group.add_argument('model', nargs='?', type=str, help=argparse.SUPPRESS)
     basic_group.add_argument("--public_name", type=str, default=None, help="Public name to be reported in the leaderboard")
     auth_group = basic_group.add_mutually_exclusive_group(required=False)
     auth_group.add_argument("--token", type=str, default=None, help="Hugging Face hub auth token for .from_pretrained()")

@@ -2,11 +2,12 @@ from typing import Optional
 
 import hivemind
 import torch
+from transformers.models.mistral.modeling_mistral import MistralForCausalLM, MistralModel, MistralPreTrainedModel
+
 from petals.client.from_pretrained import FromPretrainedMixin
 from petals.client.remote_generation import RemoteGenerationMixin
 from petals.client.remote_sequential import RemoteSequential
 from petals.models.mistral.config import DistributedMistralConfig
-from transformers.models.mistral.modeling_mistral import MistralForCausalLM, MistralModel, MistralPreTrainedModel
 
 
 class DistributedMistralModel(FromPretrainedMixin, MistralModel):
