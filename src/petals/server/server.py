@@ -645,9 +645,15 @@ class ModuleContainer(threading.Thread):
         return self.runtime.ready  # mp.Event that is true if self is ready to process batches
 
     def is_healthy(self) -> bool:
-        return all(handler.is_alive() for handler in self.conn_handlers) and all(
-            pool.is_alive() for pool in self.runtime.pools
-        )
+        for handler in self.conn_handlers:
+            if not handler.is_alive():
+                logger.warning(f"Connection handler {handler.handler_index} crashed")
+                return False
+        for i, pool in enumerate(self.runtime.pools):
+            if not pool.is_alive():
+                logger.warning(f"Task pool {i} crashed")
+                return False
+        return True
 
     def shutdown(self):
         """
