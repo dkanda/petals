@@ -42,6 +42,8 @@ def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float
             logger.warning(f"Could not check reachability via health.petals.dev: {repr(e)}")
 
         if attempt_no < n_attempts - 1:
+            if attempt_no >= 1:
+                logger.info(f"Still trying to connect, attempt {attempt_no + 1}/{n_attempts}...")
             time.sleep(retry_delay)
 
     if response is None:
