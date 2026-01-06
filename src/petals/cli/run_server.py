@@ -6,7 +6,7 @@ import torch
 from hivemind.proto.runtime_pb2 import CompressionType
 from hivemind.utils import limits
 from hivemind.utils.logging import get_logger
-from humanfriendly import parse_size
+from humanfriendly import InvalidSize, parse_size
 
 from petals.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
 from petals.server.server import Server
@@ -182,12 +182,15 @@ def main():
     compression_type = args.pop("compression").upper()
     compression = getattr(CompressionType, compression_type)
 
-    max_disk_space = args.pop("max_disk_space")
-    if max_disk_space is not None:
-        max_disk_space = parse_size(max_disk_space)
-    assert isinstance(
-        max_disk_space, (int, type(None))
-    ), "Unrecognized value for --max_disk_space. Correct examples: 1.5GB or 1500MB or 1572864000 (bytes)"
+    max_disk_space_str = args.pop("max_disk_space")
+    if max_disk_space_str is None:
+        max_disk_space = None
+    else:
+        try:
+            max_disk_space = parse_size(max_disk_space_str)
+        except InvalidSize as e:
+            logger.error(f"Failed to parse --max_disk_space: {e}. Please use a valid format, e.g., 50GB or 100GiB")
+            exit(1)
 
     if args.pop("new_swarm"):
         args["initial_peers"] = []
