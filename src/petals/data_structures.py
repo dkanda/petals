@@ -70,15 +70,15 @@ class ServerInfo:
     def from_tuple(cls, source: tuple):
         if not isinstance(source, tuple):
             raise TypeError("info must be a tuple")
-        if len(source) < 2:
-            raise ValueError("info must have at least 2 elements")
+        if len(source) not in (2, 3):
+            raise ValueError(f"info must have 2 or 3 elements, but got {len(source)}")
         if not isinstance(source[0], int):
             raise TypeError("info[0] must be an int")
         if not isinstance(source[1], (float, int)):
             raise TypeError("info[1] must be a float or int")
 
         state, throughput = source[:2]
-        extra_info = source[2] if len(source) > 2 else {}
+        extra_info = source[2] if len(source) == 3 else {}
 
         if not isinstance(extra_info, dict):
             raise TypeError("info[2] must be a dict")
