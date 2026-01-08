@@ -41,6 +41,9 @@ def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float
             response = None  # In case the previous attempt succeeded and this one failed
             logger.warning(f"Could not check reachability via health.petals.dev: {repr(e)}")
 
+        if response is None or not response["success"]:
+            logger.info(f"Still waiting for the server to become reachable, attempt {attempt_no + 1}/{n_attempts}...")
+
         if attempt_no < n_attempts - 1:
             time.sleep(retry_delay)
 
