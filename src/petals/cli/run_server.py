@@ -159,7 +159,8 @@ def main():
     host_maddrs = args.pop("host_maddrs")
     port = args.pop("port")
     if port is not None:
-        assert host_maddrs is None, "You can't use --port and --host_maddrs at the same time"
+        if host_maddrs is not None:
+            parser.error("You can't use --port and --host_maddrs at the same time")
     else:
         port = 0
     if host_maddrs is None:
@@ -168,8 +169,10 @@ def main():
     announce_maddrs = args.pop("announce_maddrs")
     public_ip = args.pop("public_ip")
     if public_ip is not None:
-        assert announce_maddrs is None, "You can't use --public_ip and --announce_maddrs at the same time"
-        assert port != 0, "Please specify a fixed non-zero --port when you use --public_ip (e.g., --port 31337)"
+        if announce_maddrs is not None:
+            parser.error("You can't use --public_ip and --announce_maddrs at the same time")
+        if port == 0:
+            parser.error("Please specify a fixed non-zero --port when you use --public_ip (e.g., --port 31337)")
         announce_maddrs = [f"/ip4/{public_ip}/tcp/{port}"]
 
     args["startup_timeout"] = args.pop("daemon_startup_timeout")
