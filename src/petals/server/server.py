@@ -541,7 +541,9 @@ class ModuleContainer(threading.Thread):
             merge_inference_pools_inplace(blocks)
 
             if should_validate_reachability:
+                logger.info("Beginning reachability check...")
                 validate_reachability(dht.peer_id)
+                logger.info("Reachability check passed")
         except:
             logger.debug("Shutting down backends")
             for backend in blocks.values():
