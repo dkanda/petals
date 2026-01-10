@@ -28,10 +28,14 @@ def main():
                        help="path or name of a pretrained model, converted with cli/convert_model.py")
     model_group.add_argument('model', nargs='?', type=str, help=argparse.SUPPRESS)
     basic_group.add_argument("--public_name", type=str, default=None, help="Public name to be reported in the leaderboard")
-    auth_group = basic_group.add_mutually_exclusive_group(required=False)
-    auth_group.add_argument("--token", type=str, default=None, help="Hugging Face hub auth token for .from_pretrained()")
-    auth_group.add_argument("--use_auth_token", action="store_true", dest="token",
-                       help="Read token saved by `huggingface-cli login")
+    basic_group.add_argument(
+        "--token",
+        type=str,
+        nargs="?",
+        const=True,
+        default=None,
+        help="Hugging Face Hub token for private models. Pass --token without arguments to use token from cache",
+    )
 
     serving_group = parser.add_argument_group("Serving")
     serving_group.add_argument('--num_blocks', type=int, default=None, help="The number of blocks to serve")
