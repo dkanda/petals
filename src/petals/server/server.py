@@ -379,8 +379,9 @@ class Server:
                     if self.stop.wait(timeout):
                         return
 
-                    if not self.module_container.is_healthy():
-                        logger.warning("One of subprocesses crashed, restarting the server")
+                    reason = self.module_container.is_healthy()
+                    if reason is not None:
+                        logger.warning(f"{reason}, restarting the server")
                         break
 
                     if self._should_choose_other_blocks():
@@ -644,16 +645,14 @@ class ModuleContainer(threading.Thread):
         """
         return self.runtime.ready  # mp.Event that is true if self is ready to process batches
 
-    def is_healthy(self) -> bool:
+    def is_healthy(self) -> Optional[str]:
         for handler in self.conn_handlers:
             if not handler.is_alive():
-                logger.warning(f"Connection handler {handler.handler_index} crashed")
-                return False
+                return f"Connection handler {handler.handler_index} crashed"
         for i, pool in enumerate(self.runtime.pools):
             if not pool.is_alive():
-                logger.warning(f"Task pool {i} crashed")
-                return False
-        return True
+                return f"Task pool {i} crashed"
+        return None
 
     def shutdown(self):
         """
