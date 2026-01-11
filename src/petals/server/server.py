@@ -272,6 +272,14 @@ class Server:
         self.module_container = None
         self.stop = threading.Event()
 
+    @property
+    def log_prefix(self) -> str:
+        """A prefix for logging messages that identifies the server."""
+        public_name = self.server_info.public_name
+        if public_name:
+            return f"Server '{public_name}': "
+        return f"Server ...{self.dht.peer_id.to_base58()[-6:]}: "
+
     def _choose_num_blocks(self) -> int:
         assert self.device.type in ("cuda", "mps"), (
             "GPU is not available. If you want to run a CPU-only server, please specify --num_blocks. "
@@ -334,6 +342,7 @@ class Server:
         return num_blocks
 
     def run(self):
+        logger.info(f"{self.log_prefix}Starting server")
         while True:
             block_indices = self._choose_blocks()
             self.module_container = ModuleContainer.create(
@@ -377,16 +386,18 @@ class Server:
                 while True:
                     timeout = random.random() * 2 * self.mean_balance_check_period
                     if self.stop.wait(timeout):
+                        logger.info(f"{self.log_prefix}Shutting down")
                         return
 
                     if not self.module_container.is_healthy():
-                        logger.warning("One of subprocesses crashed, restarting the server")
+                        logger.warning(f"{self.log_prefix}One of subprocesses crashed, restarting the server")
                         break
 
                     if self._should_choose_other_blocks():
-                        logger.info("Swarm is imbalanced, server will load other blocks")
+                        logger.info(f"{self.log_prefix}Swarm is imbalanced, server will load other blocks")
                         break  # Stop serving this set of modules
             finally:
+                logger.info(f"{self.log_prefix}Stopping blocks {self.module_container.module_uids}")
                 self.module_container.shutdown()
 
             self._clean_memory_and_fds()
