@@ -21,9 +21,12 @@ logger = get_logger(__name__)
 
 def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float = 15) -> None:
     """verify that your peer is reachable from a (centralized) validator, whether directly or through a relay"""
+    logger.info("Checking server reachability... This can take a few minutes")
+
     response = None
     n_attempts = math.floor(wait_time / retry_delay) + 1
     for attempt_no in range(n_attempts):
+        logger.info(f"Attempt {attempt_no + 1} of {n_attempts} to check reachability")
         try:
             r = requests.get(f"{REACHABILITY_API_URL}/api/v1/is_reachable/{peer_id}", timeout=10)
             r.raise_for_status()
