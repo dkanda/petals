@@ -771,15 +771,28 @@ class ModuleAnnouncerThread(threading.Thread):
         if state == ServerState.OFFLINE:
             self.join()
 
-    def _ping_next_servers(self) -> Dict[hivemind.PeerID, float]:
+    def _ping_next_servers(self) -> None:
+        if not self.next_uids:
+            return
+
         module_infos = get_remote_module_infos(self.dht, self.next_uids, latest=True)
+        if not module_infos:
+            return
+
+        # Sample some peers that host intermediate blocks (if any)
         middle_servers = {peer_id for info in module_infos[:-1] for peer_id in info.servers}
-        pinged_servers = set(sample_up_to(middle_servers, self.max_pinged))
-        pinged_servers.discard(self.dht.peer_id)
-        # Sample servers hosting the block after the last one (most likely continuations) separately
-        pinged_servers |= set(sample_up_to(module_infos[-1].servers, self.max_pinged))
-        logger.debug(f"Pinging {len(pinged_servers)} servers")
-        self.ping_aggregator.ping(list(pinged_servers))
+        peers_to_ping = set(sample_up_to(middle_servers, self.max_pinged))
+
+        # Sample servers hosting the block after our last one (most likely continuations)
+        peers_to_ping |= set(sample_up_to(module_infos[-1].servers, self.max_pinged))
+
+        peers_to_ping.discard(self.dht.peer_id)
+
+        if not peers_to_ping:
+            return
+
+        logger.debug(f"Pinging {len(peers_to_ping)} next-hop servers")
+        self.ping_aggregator.ping(list(peers_to_ping))
 
 
 class RuntimeWithDeduplicatedPools(Runtime):
