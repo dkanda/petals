@@ -1,0 +1,6 @@
+## 2024-08-20 – Fragile Dependency Chain for Core Data Structures
+**Issue:** Running a single, self-contained test file (`tests/test_data_structures.py`) required a deep, non-obvious chain of dependencies to be installed manually, one by one, as test collection failed. This included not only direct imports but also transitive dependencies from other, seemingly unrelated modules (e.g., `petals.client` and `petals.server`). The project's `setup.cfg` does not capture the full test environment, and `pip install -e .[dev]` is not sufficient.
+
+**Risk:** This creates an extremely high barrier to entry for new contributors. The inability to run even the most basic tests without significant trial-and-error can discourage contributions and makes it difficult to verify the correctness of changes. It also suggests that the project's internal module dependencies are too tightly coupled, where testing a core data structure pulls in the entire application stack.
+
+**Resolution:** Future development should prioritize decoupling the core data structures from the application logic to allow for truly standalone unit testing. A dedicated, fully-specified test dependency set (e.g., a separate `requirements-test.txt`) should be created and maintained to ensure a reproducible test environment.
