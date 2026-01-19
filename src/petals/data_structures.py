@@ -70,23 +70,21 @@ class ServerInfo:
     def from_tuple(cls, source: tuple):
         if not isinstance(source, tuple):
             raise TypeError("info must be a tuple")
-        if len(source) < 2:
-            raise ValueError("info must have at least 2 elements")
+        if len(source) != 3:
+            raise ValueError(f"ServerInfo.from_tuple expected a 3-element tuple, got {len(source)}")
         if not isinstance(source[0], int):
             raise TypeError("info[0] must be an int")
         if not isinstance(source[1], (float, int)):
             raise TypeError("info[1] must be a float or int")
-
-        state, throughput = source[:2]
-        extra_info = source[2] if len(source) > 2 else {}
-
-        if not isinstance(extra_info, dict):
+        if not isinstance(source[2], dict):
             raise TypeError("info[2] must be a dict")
 
+        state_val, throughput, extra_info = source
+
         try:
-            state = ServerState(state)
+            state = ServerState(state_val)
         except ValueError:
-            raise ValueError(f"Invalid server state: {state}")
+            raise ValueError(f"Invalid server state: {state_val}")
 
         known_fields = {f.name for f in dataclasses.fields(cls)}
         unknown_fields = set(extra_info.keys()) - known_fields

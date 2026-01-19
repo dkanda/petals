@@ -22,8 +22,14 @@ def test_server_info_from_tuple():
     with pytest.raises(TypeError, match="info must be a tuple"):
         ServerInfo.from_tuple("not a tuple")
 
-    with pytest.raises(ValueError, match="info must have at least 2 elements"):
-        ServerInfo.from_tuple((ServerState.ONLINE.value,))
+    for wrong_tuple in [
+        (),
+        (ServerState.ONLINE.value,),
+        (ServerState.ONLINE.value, 10.0),
+        (ServerState.ONLINE.value, 10.0, {}, None),
+    ]:
+        with pytest.raises(ValueError, match=f"ServerInfo.from_tuple expected a 3-element tuple, got {len(wrong_tuple)}"):
+            ServerInfo.from_tuple(wrong_tuple)
 
     with pytest.raises(TypeError, match="info\\[0\\] must be an int"):
         ServerInfo.from_tuple(("invalid state", 10.0, {}))
