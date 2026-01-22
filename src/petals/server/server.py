@@ -749,6 +749,9 @@ class ModuleAnnouncerThread(threading.Thread):
             )
             if self.server_info.state == ServerState.OFFLINE:
                 break
+
+            logger.info(f"Refreshed DHT entries for blocks {self.server_info.start_block}-{self.server_info.end_block - 1}")
+
             if not self.dht_prefix.startswith("_"):  # Not private
                 self.dht.store(
                     key="_petals.models",
