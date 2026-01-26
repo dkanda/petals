@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 
 def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float = 15) -> None:
     """verify that your peer is reachable from a (centralized) validator, whether directly or through a relay"""
+    logger.info("Checking server reachability...")
     response = None
     n_attempts = math.floor(wait_time / retry_delay) + 1
     for attempt_no in range(n_attempts):
@@ -36,7 +37,11 @@ def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float
             if attempt_no == 0:
                 # Usually, libp2p manages to set up relays before we finish loading blocks.
                 # In other cases, we may need to wait for up to `wait_time` seconds before it's done.
-                logger.info("Detected a NAT or a firewall, connecting to libp2p relays. This takes a few minutes")
+                logger.info(
+                    "Server not reachable directly. Attempting to connect via libp2p relays. This may take a few minutes"
+                )
+            elif attempt_no > 0 and attempt_no % 4 == 0:
+                logger.info(f"Still trying to connect via libp2p relays. Attempt {attempt_no}/{n_attempts}...")
         except Exception as e:
             response = None  # In case the previous attempt succeeded and this one failed
             logger.warning(f"Could not check reachability via health.petals.dev: {repr(e)}")
