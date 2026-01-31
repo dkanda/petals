@@ -115,7 +115,7 @@ def test_pack_inputs():
             assert original == restored
 
 
-def test_validate_reachability(monkeypatch):
+def test_validate_reachability(monkeypatch, caplog):
     monkeypatch.setenv("PETALS_IGNORE_DEPENDENCY_VERSIONS", "1")
 
     peer_id = PeerID.from_base58("Qme6XdVTfK4BGN8gD2qt93J2SGsSkCo35aTzSJ5T16u3xe")
@@ -127,18 +127,68 @@ def test_validate_reachability(monkeypatch):
         def raise_for_status(self):
             pass
 
+    class MockFailure:
+        def json(self):
+            return {"success": False, "message": "NAT detected", "your_ip": "1.2.3.4"}
+
+        def raise_for_status(self):
+            pass
+
     with monkeypatch.context() as m:
         m.setattr(requests, "get", lambda *args, **kwargs: MockSuccess())
-        validate_reachability(peer_id, wait_time=0.1, retry_delay=0.05)
+        with caplog.at_level("INFO"):
+            validate_reachability(peer_id, wait_time=0.1, retry_delay=0.05)
+            assert "Server is reachable from the Internet" in caplog.text
 
+    caplog.clear()
+    with monkeypatch.context() as m:
+        m.setattr(requests, "get", lambda *args, **kwargs: MockFailure())
+
+        # We mock time to simulate the passage of 7 minutes
+        current_time = 1000.0
+        def mock_perf_counter():
+            return current_time
+        def mock_sleep(seconds):
+            nonlocal current_time
+            current_time += seconds
+
+        m.setattr("petals.server.reachability.time.perf_counter", mock_perf_counter)
+        m.setattr("petals.server.reachability.time.sleep", mock_sleep)
+
+        with caplog.at_level("INFO"):
+            with pytest.raises(RuntimeError, match=r"Server has not become reachable from the Internet"):
+                validate_reachability(peer_id, wait_time=7 * 60, retry_delay=15)
+
+            assert "Detected a NAT or a firewall" in caplog.text
+            assert "Still waiting for reachability" in caplog.text
+            assert "elapsed: 1m 0s" in caplog.text
+            assert "elapsed: 6m 0s" in caplog.text
+
+    caplog.clear()
     with monkeypatch.context() as m:
         m.setattr(
             requests,
             "get",
             lambda *args, **kwargs: (_ for _ in ()).throw(requests.exceptions.ConnectionError),
         )
-        with pytest.raises(RuntimeError, match=r"Could not check server reachability"):
-            validate_reachability(peer_id, wait_time=0.1, retry_delay=0.05)
+
+        current_time = 1000.0
+        def mock_perf_counter():
+            return current_time
+        def mock_sleep(seconds):
+            nonlocal current_time
+            current_time += seconds
+
+        m.setattr("petals.server.reachability.time.perf_counter", mock_perf_counter)
+        m.setattr("petals.server.reachability.time.sleep", mock_sleep)
+
+        with caplog.at_level("WARNING"):
+            with pytest.raises(RuntimeError, match=r"Could not check server reachability"):
+                validate_reachability(peer_id, wait_time=7 * 60, retry_delay=15)
+
+            # Check that warnings are throttled (should appear ~7-8 times instead of 28 attempts)
+            warning_count = caplog.text.count("Could not check reachability via health.petals.dev")
+            assert 1 <= warning_count <= 8
 
 
 @patch("petals.models.deepseek.config.DeepseekV3Config.from_pretrained")

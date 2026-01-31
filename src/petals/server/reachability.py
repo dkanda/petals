@@ -23,6 +23,8 @@ def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float
     """verify that your peer is reachable from a (centralized) validator, whether directly or through a relay"""
     response = None
     n_attempts = math.floor(wait_time / retry_delay) + 1
+    start_time = last_info_time = time.perf_counter()
+    last_warning_time = 0
     for attempt_no in range(n_attempts):
         try:
             r = requests.get(f"{REACHABILITY_API_URL}/api/v1/is_reachable/{peer_id}", timeout=10)
@@ -34,15 +36,28 @@ def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float
                 return
 
             if attempt_no == 0:
-                # Usually, libp2p manages to set up relays before we finish loading blocks.
-                # In other cases, we may need to wait for up to `wait_time` seconds before it's done.
-                logger.info("Detected a NAT or a firewall, connecting to libp2p relays. This takes a few minutes")
+                logger.info(
+                    "Detected a NAT or a firewall. Connecting to libp2p relays and verifying reachability from "
+                    "the Internet. This may take up to 7 minutes (approx. 1 minute for relays and a few minutes "
+                    "for health.petals.dev to detect the new server)"
+                )
         except Exception as e:
             response = None  # In case the previous attempt succeeded and this one failed
-            logger.warning(f"Could not check reachability via health.petals.dev: {repr(e)}")
+            if time.perf_counter() - last_warning_time >= 60:
+                logger.warning(f"Could not check reachability via health.petals.dev: {repr(e)}")
+                last_warning_time = time.perf_counter()
 
         if attempt_no < n_attempts - 1:
             time.sleep(retry_delay)
+            cur_time = time.perf_counter()
+            if cur_time - last_info_time >= 60:
+                elapsed_time = cur_time - start_time
+                remaining_time = max(0, wait_time - elapsed_time)
+                logger.info(
+                    f"Still waiting for reachability (elapsed: {int(elapsed_time // 60)}m {int(elapsed_time % 60)}s, "
+                    f"remaining: {int(remaining_time // 60)}m {int(remaining_time % 60)}s)..."
+                )
+                last_info_time = cur_time
 
     if response is None:
         raise RuntimeError(
