@@ -1,0 +1,4 @@
+## 2025-05-15 – [Harden UID parsing and ServerInfo invariants]
+**Issue:** `parse_uid` was using fragile string splitting and relying on `assert` for invariant checks (which are skipped in optimized mode). `ServerInfo` lacked validation for its block range invariant (`start_block < end_block`) and its deserialization was lenient with tuple lengths.
+**Risk:** Chained UIDs could be misparsed as single UIDs in production. Malformed or malicious peer data could announce invalid block ranges, leading to negative span lengths and potential logic errors in routing or block selection.
+**Resolution:** Hardened `parse_uid` to use explicit `if` checks and `rsplit` for robust parsing. Added `__post_init__` to `ServerInfo` for block range validation and made `from_tuple` strictly validate the input structure.
