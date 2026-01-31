@@ -43,6 +43,12 @@ def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float
 
         if attempt_no < n_attempts - 1:
             time.sleep(retry_delay)
+            current_wait_time = (attempt_no + 1) * retry_delay
+            if current_wait_time % 60 < retry_delay and current_wait_time >= 60:
+                logger.info(
+                    f"Still waiting for reachability ({current_wait_time // 60} min passed, "
+                    f"attempt {attempt_no + 2}/{n_attempts})..."
+                )
 
     if response is None:
         raise RuntimeError(
