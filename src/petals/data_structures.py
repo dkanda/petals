@@ -12,9 +12,16 @@ CHAIN_DELIMITER = " "  # delimits multiple uids in a sequence, e.g. "bloom.layer
 
 
 def parse_uid(uid: ModuleUID) -> Tuple[str, int]:
-    assert CHAIN_DELIMITER not in uid, "parse_uid() does not support chained UIDs"
-    dht_prefix, index = uid.split(UID_DELIMITER)
-    return dht_prefix, int(index)
+    if CHAIN_DELIMITER in uid:
+        raise ValueError("parse_uid() does not support chained UIDs")
+    parts = uid.rsplit(UID_DELIMITER, 1)
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        raise ValueError(f"Malformed module UID: {uid}")
+    dht_prefix, index = parts
+    try:
+        return dht_prefix, int(index)
+    except ValueError:
+        raise ValueError(f"Module index must be an integer, got {index} (UID: {uid})")
 
 
 @pydantic.dataclasses.dataclass
