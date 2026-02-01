@@ -21,6 +21,8 @@ logger = get_logger(__name__)
 
 def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float = 15) -> None:
     """verify that your peer is reachable from a (centralized) validator, whether directly or through a relay"""
+    start_time = time.time()
+    next_log_time = start_time + 60
     response = None
     n_attempts = math.floor(wait_time / retry_delay) + 1
     for attempt_no in range(n_attempts):
@@ -30,16 +32,29 @@ def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float
             response = r.json()
 
             if response["success"]:
-                logger.info("Server is reachable from the Internet. It will appear at https://health.petals.dev soon")
+                if attempt_no > 0:
+                    logger.info(
+                        f"Server became reachable after {int(time.time() - start_time)}s. "
+                        f"It will appear at https://health.petals.dev soon"
+                    )
+                else:
+                    logger.info("Server is reachable from the Internet. It will appear at https://health.petals.dev soon")
                 return
-
-            if attempt_no == 0:
-                # Usually, libp2p manages to set up relays before we finish loading blocks.
-                # In other cases, we may need to wait for up to `wait_time` seconds before it's done.
-                logger.info("Detected a NAT or a firewall, connecting to libp2p relays. This takes a few minutes")
         except Exception as e:
             response = None  # In case the previous attempt succeeded and this one failed
             logger.warning(f"Could not check reachability via health.petals.dev: {repr(e)}")
+
+        if attempt_no == 0:
+            # Usually, libp2p manages to set up relays before we finish loading blocks.
+            # In other cases, we may need to wait for up to `wait_time` seconds before it's done.
+            logger.info("Detected a NAT or a firewall, connecting to libp2p relays. This takes a few minutes")
+
+        if time.time() >= next_log_time:
+            elapsed = int(time.time() - start_time)
+            remaining = int(wait_time - elapsed)
+            if remaining > 0:
+                logger.info(f"Still waiting for reachability (elapsed: {elapsed}s, remaining: {remaining}s)...")
+                next_log_time += 60
 
         if attempt_no < n_attempts - 1:
             time.sleep(retry_delay)
