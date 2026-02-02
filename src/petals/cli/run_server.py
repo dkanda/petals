@@ -18,8 +18,12 @@ logger = get_logger(__name__)
 
 def main():
     # fmt:off
-    parser = configargparse.ArgParser(default_config_files=["config.yml"],
-                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = configargparse.ArgParser(
+        default_config_files=["config.yml"],
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Start a Petals server to host model blocks and contribute to the swarm.",
+        epilog="Example: python -m petals.cli.run_server meta-llama/Meta-Llama-3.1-405B-Instruct",
+    )
     parser.add('-c', '--config', required=False, is_config_file=True, help='config file path')
 
     basic_group = parser.add_argument_group("Basic")
@@ -28,10 +32,16 @@ def main():
                        help="path or name of a pretrained model, converted with cli/convert_model.py")
     model_group.add_argument('model', nargs='?', type=str, help=argparse.SUPPRESS)
     basic_group.add_argument("--public_name", type=str, default=None, help="Public name to be reported in the leaderboard")
-    auth_group = basic_group.add_mutually_exclusive_group(required=False)
-    auth_group.add_argument("--token", type=str, default=None, help="Hugging Face hub auth token for .from_pretrained()")
-    auth_group.add_argument("--use_auth_token", action="store_true", dest="token",
-                       help="Read token saved by `huggingface-cli login")
+    basic_group.add_argument(
+        "--token",
+        type=str,
+        nargs="?",
+        const=True,
+        default=None,
+        help="Hugging Face hub auth token for .from_pretrained(). "
+        "If given without a value, reads token saved by `huggingface-cli login`.",
+    )
+    basic_group.add_argument("--use_auth_token", action="store_true", help=argparse.SUPPRESS)
 
     serving_group = parser.add_argument_group("Serving")
     serving_group.add_argument('--num_blocks', type=int, default=None, help="The number of blocks to serve")
@@ -154,12 +164,18 @@ def main():
     args = vars(parser.parse_args())
     args.pop("config", None)
 
+    if args.pop("use_auth_token"):
+        if args["token"] is not None and args["token"] is not True:
+            parser.error("You can't use --token and --use_auth_token at the same time")
+        args["token"] = True
+
     args["converted_model_name_or_path"] = args.pop("model") or args["converted_model_name_or_path"]
 
     host_maddrs = args.pop("host_maddrs")
     port = args.pop("port")
     if port is not None:
-        assert host_maddrs is None, "You can't use --port and --host_maddrs at the same time"
+        if host_maddrs is not None:
+            parser.error("You can't use --port and --host_maddrs at the same time")
     else:
         port = 0
     if host_maddrs is None:
@@ -168,8 +184,10 @@ def main():
     announce_maddrs = args.pop("announce_maddrs")
     public_ip = args.pop("public_ip")
     if public_ip is not None:
-        assert announce_maddrs is None, "You can't use --public_ip and --announce_maddrs at the same time"
-        assert port != 0, "Please specify a fixed non-zero --port when you use --public_ip (e.g., --port 31337)"
+        if announce_maddrs is not None:
+            parser.error("You can't use --public_ip and --announce_maddrs at the same time")
+        if port == 0:
+            parser.error("Please specify a fixed non-zero --port when you use --public_ip (e.g., --port 31337)")
         announce_maddrs = [f"/ip4/{public_ip}/tcp/{port}"]
 
     args["startup_timeout"] = args.pop("daemon_startup_timeout")
@@ -184,10 +202,13 @@ def main():
 
     max_disk_space = args.pop("max_disk_space")
     if max_disk_space is not None:
-        max_disk_space = parse_size(max_disk_space)
-    assert isinstance(
-        max_disk_space, (int, type(None))
-    ), "Unrecognized value for --max_disk_space. Correct examples: 1.5GB or 1500MB or 1572864000 (bytes)"
+        try:
+            max_disk_space = parse_size(max_disk_space)
+        except Exception:
+            parser.error(
+                f"Unrecognized value for --max_disk_space: {max_disk_space}. "
+                f"Correct examples: 1.5GB or 1500MB or 1572864000 (bytes)"
+            )
 
     if args.pop("new_swarm"):
         args["initial_peers"] = []
