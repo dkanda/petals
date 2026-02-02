@@ -154,12 +154,10 @@ class TransformerConnectionHandler(ConnectionHandler):
                 args_structure = metadata.get("args_structure")
                 if not requested_uids:
                     raise ValueError("User must specify at least one block for inference, but got none")
-                assert isinstance(
-                    max_length, int
-                ), f"rpc_inference metadata must contain int max_length, got {max_length}"
-                assert isinstance(
-                    points, (float, int)
-                ), f"rpc_inference should have number of points as a number or None, got {points}"
+                if not isinstance(max_length, int):
+                    raise TypeError(f"rpc_inference metadata must contain int max_length, got {max_length}")
+                if not isinstance(points, (float, int)):
+                    raise TypeError(f"rpc_inference should have number of points as a number or None, got {points}")
                 if not 0 <= max_length <= self.inference_max_length:
                     raise ValueError(
                         f"Cannot allocate KV cache for {max_length} tokens, max = {self.inference_max_length}"
@@ -196,7 +194,8 @@ class TransformerConnectionHandler(ConnectionHandler):
 
     @contextlib.contextmanager
     def _managed_session(self, session_id: str):
-        assert session_id not in self._session_queues, f"session id {session_id} is not unique"
+        if session_id in self._session_queues:
+            raise RuntimeError(f"session id {session_id} is not unique")
         try:
             self._session_queues[session_id] = asyncio.Queue()
             self._session_handlers[session_id] = self._handler_index
@@ -320,10 +319,13 @@ class TransformerConnectionHandler(ConnectionHandler):
     async def _push_outputs(
         self, request: runtime_pb2.ExpertRequest, serialized_outputs: runtime_pb2.Tensor, metadata: dict
     ) -> None:
+        next_servers = metadata.get("next_servers")
+        if not next_servers:
+            return
+
         try:
-            next_servers = metadata.get("next_servers")
-            if not next_servers:
-                return
+            if not isinstance(next_servers, (list, tuple)) or not next_servers:
+                raise ValueError(f"Invalid next_servers: {next_servers}")
 
             next_peer_id, next_session_id, next_start, next_end = next_servers[0]
             next_peer_id = PeerID.from_base58(next_peer_id)
@@ -344,10 +346,7 @@ class TransformerConnectionHandler(ConnectionHandler):
                 timeout=self.request_timeout,
             )
         except Exception:
-            logger.debug(
-                f"Failed to push outputs to peer_id={next_peer_id}, session_id={next_session_id}, blocks={next_start}:{next_end}:",
-                exc_info=True,
-            )
+            logger.debug(f"Failed to push outputs to {next_servers[0] if next_servers else 'unknown'}:", exc_info=True)
 
     async def rpc_forward(self, request: runtime_pb2.ExpertRequest, context: P2PContext) -> runtime_pb2.ExpertResponse:
         async with timeout(self.request_timeout):
@@ -361,9 +360,8 @@ class TransformerConnectionHandler(ConnectionHandler):
             active_adapter = self._get_active_adapter(metadata)
             points = metadata.get("points", 0)
             args_structure = metadata.get("args_structure")
-            assert isinstance(
-                points, (float, int)
-            ), f"rpc_forward should have number of points as number or None, got {points}"
+            if not isinstance(points, (float, int)):
+                raise TypeError(f"rpc_forward should have number of points as number or None, got {points}")
 
             hidden_states = await run_rpc_forward(
                 *flat_inputs,
@@ -390,9 +388,8 @@ class TransformerConnectionHandler(ConnectionHandler):
             active_adapter = self._get_active_adapter(metadata)
             points = metadata.get("points", 0)
             args_structure = metadata.get("args_structure")
-            assert isinstance(
-                points, (float, int)
-            ), f"rpc_forward_stream should have number of points as number or None, got {points}"
+            if not isinstance(points, (float, int)):
+                raise TypeError(f"rpc_forward_stream should have number of points as number or None, got {points}")
 
             hidden_states = await run_rpc_forward(
                 *flat_inputs,
@@ -419,10 +416,13 @@ class TransformerConnectionHandler(ConnectionHandler):
         outputs_schema = requested_backends[-1].outputs_schema
 
         if metadata.get("output_compression") is not None:
-            assert isinstance(metadata["output_compression"], (list, tuple)), "output_compression must be a tuple/list"
+            if not isinstance(metadata["output_compression"], (list, tuple)):
+                raise TypeError("output_compression must be a tuple/list")
             output_compression = tuple(metadata["output_compression"])
-            assert all(isinstance(c, int) for c in output_compression), "output_compression must contain integers"
-            assert len(output_compression) == 1, f"output_compression tuple should have 1 element"
+            if not all(isinstance(c, int) for c in output_compression):
+                raise TypeError("output_compression must contain integers")
+            if len(output_compression) != 1:
+                raise ValueError(f"output_compression tuple should have 1 element")
         else:
             output_compression = tuple(tensor.compression for tensor in outputs_schema)
 
@@ -443,9 +443,8 @@ class TransformerConnectionHandler(ConnectionHandler):
             active_adapter = self._get_active_adapter(metadata)
             points = metadata.get("points", 0)
             args_structure = metadata.get("args_structure")
-            assert isinstance(
-                points, (float, int)
-            ), f"rpc_backward should have number of points as number or None, got {points}"
+            if not isinstance(points, (float, int)):
+                raise TypeError(f"rpc_backward should have number of points as number or None, got {points}")
 
             grads = await run_rpc_backward(
                 *flat_tensors,
@@ -470,9 +469,8 @@ class TransformerConnectionHandler(ConnectionHandler):
             active_adapter = self._get_active_adapter(metadata)
             points = metadata.get("points", 0)
             args_structure = metadata.get("args_structure")
-            assert isinstance(
-                points, (float, int)
-            ), f"rpc_backward_stream should have number of points as number or None, got {points}"
+            if not isinstance(points, (float, int)):
+                raise TypeError(f"rpc_backward_stream should have number of points as number or None, got {points}")
 
             grads = await run_rpc_backward(
                 *flat_tensors,
@@ -507,10 +505,13 @@ class TransformerConnectionHandler(ConnectionHandler):
         )  # TODO generalize
 
         if metadata.get("output_compression") is not None:
-            assert isinstance(metadata["output_compression"], (list, tuple)), "output_compression must be a tuple/list"
+            if not isinstance(metadata["output_compression"], (list, tuple)):
+                raise TypeError("output_compression must be a tuple/list")
             output_compression = tuple(metadata["output_compression"])
-            assert all(isinstance(c, int) for c in output_compression), "output_compression must contain integers"
-            assert len(output_compression) == len(grads), f"output_compression should have {len(grads)} elements"
+            if not all(isinstance(c, int) for c in output_compression):
+                raise TypeError("output_compression must contain integers")
+            if len(output_compression) != len(grads):
+                raise ValueError(f"output_compression should have {len(grads)} elements")
         else:
             output_compression = tuple(tensor.compression for tensor in flat_grads_schema)
 
