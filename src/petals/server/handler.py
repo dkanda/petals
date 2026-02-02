@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import multiprocessing as mp
 import sys
+import time
 from enum import Enum
 from itertools import chain
 from typing import Any, AsyncIterator, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -143,13 +144,15 @@ class TransformerConnectionHandler(ConnectionHandler):
                 return
 
             requested_uids = self._check_uids(request.uid)
-            self._log_request("rpc_inference.open", requested_uids, context)
+            start_time = time.perf_counter()
+            session_id = None
             try:
                 metadata = MSGPackSerializer.loads(request.metadata) if request.metadata else {}
                 requested_backends = tuple(self.module_backends[uid] for uid in requested_uids)
                 max_length = metadata.get("max_length")
                 points = metadata.get("points", 0)
                 session_id = metadata.get("session_id")
+                self._log_request("rpc_inference.open", requested_uids, context, session_id=session_id)
                 alloc_timeout = float(metadata.get("alloc_timeout", 0.0))
                 args_structure = metadata.get("args_structure")
                 if not requested_uids:
@@ -192,7 +195,14 @@ class TransformerConnectionHandler(ConnectionHandler):
                         yield runtime_pb2.ExpertResponse(tensors=output_tensors)
 
             finally:
-                self._log_request("rpc_inference.close", requested_uids, context)
+                duration = time.perf_counter() - start_time
+                self._log_request(
+                    "rpc_inference.close",
+                    requested_uids,
+                    context,
+                    session_id=session_id,
+                    debug=f"duration={duration:.2f}s",
+                )
 
     @contextlib.contextmanager
     def _managed_session(self, session_id: str):
@@ -265,7 +275,13 @@ class TransformerConnectionHandler(ConnectionHandler):
                     pushed = metadata.get("pushed")
                     if pushed:
                         n_pushes += 1
-                        self._log_request("rpc_inference.push", requested_uids, context, debug=f"session received push")
+                        self._log_request(
+                            "rpc_inference.push",
+                            requested_uids,
+                            context,
+                            session_id=session_id,
+                            debug=f"session received push",
+                        )
 
                     if step_id is None or step_id not in processed_step_ids:
                         yield request, metadata
@@ -277,6 +293,7 @@ class TransformerConnectionHandler(ConnectionHandler):
                             "rpc_inference.push",
                             requested_uids,
                             context,
+                            session_id=session_id,
                             warning=f"arrived late {n_late_pushes / n_pushes * 100:.1f}% of the time",
                         )
 
@@ -299,7 +316,9 @@ class TransformerConnectionHandler(ConnectionHandler):
                         request = await get_push_task
                         get_push_task = None
                     else:
-                        self._log_request("rpc_inference.step", requested_uids, context, warning="timed out")
+                        self._log_request(
+                            "rpc_inference.step", requested_uids, context, session_id=session_id, warning="timed out"
+                        )
                         anext_task.cancel()
                         get_push_task.cancel()
                         return
@@ -312,17 +331,27 @@ class TransformerConnectionHandler(ConnectionHandler):
 
         requested_uids = self._check_uids(request.uid)
         metadata = MSGPackSerializer.loads(request.metadata)
-        session_id = metadata["session_id"]
-        self._log_request("rpc_push", requested_uids, context, debug=f"session_id={session_id}")
+        session_id = metadata.get("session_id")
+        if session_id is None:
+            self._log_request("rpc_push", requested_uids, context, warning="missing session_id")
+            return runtime_pb2.ExpertResponse()
+
+        self._log_request("rpc_push", requested_uids, context, session_id=session_id)
         self._put_into_session_queue(session_id, request)
         return runtime_pb2.ExpertResponse()
 
     async def _push_outputs(
         self, request: runtime_pb2.ExpertRequest, serialized_outputs: runtime_pb2.Tensor, metadata: dict
     ) -> None:
+        next_peer_id = None
+        next_session_id = None
         try:
             next_servers = metadata.get("next_servers")
             if not next_servers:
+                return
+
+            if not isinstance(next_servers[0], (list, tuple)) or len(next_servers[0]) != 4:
+                logger.warning(f"Invalid next_servers format: {next_servers[0]}")
                 return
 
             next_peer_id, next_session_id, next_start, next_end = next_servers[0]
@@ -354,10 +383,10 @@ class TransformerConnectionHandler(ConnectionHandler):
             # Parse request and prepare backends
             flat_inputs = [deserialize_torch_tensor(tensor) for tensor in request.tensors]
             requested_uids = self._check_uids(request.uid)
-            self._log_request("rpc_forward", requested_uids, context)
+            metadata = MSGPackSerializer.loads(request.metadata) if request.metadata else {}
+            self._log_request("rpc_forward", requested_uids, context, session_id=metadata.get("session_id"))
 
             requested_backends = tuple(self.module_backends[uid] for uid in requested_uids)
-            metadata = MSGPackSerializer.loads(request.metadata) if request.metadata else {}
             active_adapter = self._get_active_adapter(metadata)
             points = metadata.get("points", 0)
             args_structure = metadata.get("args_structure")
@@ -384,7 +413,7 @@ class TransformerConnectionHandler(ConnectionHandler):
             # Parse requests and prepare backends
             uid_str, flat_inputs, metadata = await self._gather_inputs(requests, context)
             requested_uids = self._check_uids(uid_str)
-            self._log_request("rpc_forward_stream", requested_uids, context)
+            self._log_request("rpc_forward_stream", requested_uids, context, session_id=metadata.get("session_id"))
 
             requested_backends = tuple(self.module_backends[uid] for uid in requested_uids)
             active_adapter = self._get_active_adapter(metadata)
@@ -436,10 +465,10 @@ class TransformerConnectionHandler(ConnectionHandler):
             # Parse requests and prepare backends
             flat_tensors = [deserialize_torch_tensor(tensor) for tensor in request.tensors]
             requested_uids = self._check_uids(request.uid)
-            self._log_request("rpc_backward", requested_uids, context)
+            metadata = MSGPackSerializer.loads(request.metadata) if request.metadata else {}
+            self._log_request("rpc_backward", requested_uids, context, session_id=metadata.get("session_id"))
 
             requested_backends = tuple(self.module_backends[uid] for uid in requested_uids)
-            metadata = MSGPackSerializer.loads(request.metadata) if request.metadata else {}
             active_adapter = self._get_active_adapter(metadata)
             points = metadata.get("points", 0)
             args_structure = metadata.get("args_structure")
@@ -464,7 +493,7 @@ class TransformerConnectionHandler(ConnectionHandler):
         async with timeout(self.request_timeout):
             uids_header, flat_tensors, metadata = await self._gather_inputs(requests, context)
             requested_uids = self._check_uids(uids_header)
-            self._log_request("rpc_backward_stream", requested_uids, context)
+            self._log_request("rpc_backward_stream", requested_uids, context, session_id=metadata.get("session_id"))
 
             requested_backends = tuple(self.module_backends[uid] for uid in requested_uids)
             active_adapter = self._get_active_adapter(metadata)
@@ -552,19 +581,24 @@ class TransformerConnectionHandler(ConnectionHandler):
         uids: Optional[Sequence[ModuleUID]],
         context: P2PContext,
         *,
+        session_id: Optional[str] = None,
         debug: Optional[str] = None,
         warning: Optional[str] = None,
     ) -> None:
         if uids is not None:
-            friendly_uids = [uid.split(".")[-1] for uid in uids if "." in uid]
-            friendly_uids = [int(uid) for uid in friendly_uids if uid.isdigit()]
-            friendly_uids = f"{min(friendly_uids)}:{max(friendly_uids) + 1}" if friendly_uids else uids
+            indices = [uid.split(".")[-1] for uid in uids if "." in uid]
+            indices = [int(idx) for idx in indices if idx.isdigit()]
+            if indices and sorted(indices) == list(range(min(indices), max(indices) + 1)):
+                friendly_uids = f"{min(indices)}:{max(indices) + 1}"
+            else:
+                friendly_uids = indices if indices else uids
         else:
             friendly_uids = "n/a"
 
-        friendly_remote_id = "..." + str(context.remote_id)[-6:]
+        friendly_remote_id = "..." + str(context.remote_id)[-8:]
+        session_info = f", session_id={session_id}" if session_id else ""
 
-        message = f"{method}(blocks={friendly_uids}, remote_peer={friendly_remote_id})"
+        message = f"{method}(blocks={friendly_uids}, remote_peer={friendly_remote_id}{session_info})"
         if warning is not None:
             logger.warning(f"{message}: {warning}")
         elif debug is not None:
