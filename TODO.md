@@ -2,14 +2,14 @@
 
 The following TODO list outlines steps to make Petals accessible to non-technical users for home use, including easy private swarms and compatibility with existing Chat UIs.
 
-## 1. OpenAI-Compatible HTTP API (High Priority)
+## 1. OpenAI-Compatible HTTP API (High Priority) [DONE]
 *   **Goal**: Enable users to use Petals with any existing Chat UI (e.g., SillyTavern, generic web frontends) by providing a local API server that mimics the OpenAI API.
 *   **Implementation**:
-    *   Create `src/petals/cli/run_http_server.py`.
-    *   Use `FastAPI` and `Uvicorn` (add to `extras_require` in `setup.cfg`).
-    *   Implement `/v1/models`, `/v1/chat/completions`, and `/v1/completions` endpoints.
-    *   Map these endpoints to `petals.AutoDistributedModelForCausalLM` inference logic.
-    *   Support streaming responses (SSE).
+    *   [x] Create `src/petals/cli/run_http_server.py`.
+    *   [x] Use `FastAPI` and `Uvicorn` (add to `extras_require` in `setup.cfg`).
+    *   [x] Implement `/v1/models`, `/v1/chat/completions`, and `/v1/completions` endpoints.
+    *   [x] Map these endpoints to `petals.AutoDistributedModelForCausalLM` inference logic.
+    *   [x] Support streaming responses (SSE).
 
 ## 2. Interactive Configuration Wizard (High Priority)
 *   **Goal**: Simplify the `run_server` process for non-technical users, removing the need to understand complex CLI flags.
