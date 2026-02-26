@@ -1,19 +1,19 @@
 import argparse
+import json
 import logging
 import os
 import time
 import uuid
-import json
 from contextlib import asynccontextmanager
-from typing import List, Optional, Union, Dict, Any
 from threading import Thread
+from typing import Any, Dict, List, Optional, Union
 
 import configargparse
-import uvicorn
 import torch
+import uvicorn
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from hivemind.utils.logging import get_logger
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, TextIteratorStreamer
@@ -25,6 +25,7 @@ logger = get_logger(__name__)
 
 model = None
 tokenizer = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,19 +47,23 @@ async def lifespan(app: FastAPI):
     yield
     # Clean up resources if needed
 
+
 class ModelCard(BaseModel):
     id: str
     object: str = "model"
     created: int = Field(default_factory=lambda: int(time.time()))
     owned_by: str = "petals"
 
+
 class ModelList(BaseModel):
     object: str = "list"
     data: List[ModelCard]
 
+
 class ChatMessage(BaseModel):
     role: str
     content: str
+
 
 class ChatCompletionRequest(BaseModel):
     model: str
@@ -69,10 +74,12 @@ class ChatCompletionRequest(BaseModel):
     stream: Optional[bool] = Field(default=False)
     stop: Optional[Union[str, List[str]]] = None
 
+
 class ChatChoice(BaseModel):
     index: int
     message: ChatMessage
     finish_reason: Optional[str] = None
+
 
 class ChatCompletionResponse(BaseModel):
     id: str
@@ -82,14 +89,17 @@ class ChatCompletionResponse(BaseModel):
     choices: List[ChatChoice]
     usage: Optional[Dict[str, int]] = None
 
+
 class Delta(BaseModel):
     role: Optional[str] = None
     content: Optional[str] = None
+
 
 class ChatChunkChoice(BaseModel):
     index: int
     delta: Delta
     finish_reason: Optional[str] = None
+
 
 class ChatCompletionChunk(BaseModel):
     id: str
@@ -97,6 +107,7 @@ class ChatCompletionChunk(BaseModel):
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
     choices: List[ChatChunkChoice]
+
 
 class CompletionRequest(BaseModel):
     model: str
@@ -107,10 +118,12 @@ class CompletionRequest(BaseModel):
     stream: Optional[bool] = Field(default=False)
     echo: Optional[bool] = Field(default=False)
 
+
 class CompletionChoice(BaseModel):
     text: str
     index: int
     finish_reason: Optional[str] = None
+
 
 class CompletionResponse(BaseModel):
     id: str
@@ -119,6 +132,7 @@ class CompletionResponse(BaseModel):
     model: str
     choices: List[CompletionChoice]
     usage: Optional[Dict[str, int]] = None
+
 
 def create_app(args):
     app = FastAPI(lifespan=lifespan)
@@ -140,9 +154,7 @@ def create_app(args):
     async def chat_completions(request: ChatCompletionRequest):
         # Format prompts
         prompt = tokenizer.apply_chat_template(
-            [m.model_dump() for m in request.messages],
-            tokenize=False,
-            add_generation_prompt=True
+            [m.model_dump() for m in request.messages], tokenize=False, add_generation_prompt=True
         )
 
         inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
@@ -171,7 +183,7 @@ def create_app(args):
                     id=request_id,
                     created=created,
                     model=request.model,
-                    choices=[ChatChunkChoice(index=0, delta=Delta(role="assistant"))]
+                    choices=[ChatChunkChoice(index=0, delta=Delta(role="assistant"))],
                 )
                 yield f"data: {chunk.model_dump_json()}\n\n"
 
@@ -180,7 +192,7 @@ def create_app(args):
                         id=request_id,
                         created=created,
                         model=request.model,
-                        choices=[ChatChunkChoice(index=0, delta=Delta(content=new_text))]
+                        choices=[ChatChunkChoice(index=0, delta=Delta(content=new_text))],
                     )
                     yield f"data: {chunk.model_dump_json()}\n\n"
 
@@ -188,7 +200,7 @@ def create_app(args):
                     id=request_id,
                     created=created,
                     model=request.model,
-                    choices=[ChatChunkChoice(index=0, delta=Delta(), finish_reason="stop")]
+                    choices=[ChatChunkChoice(index=0, delta=Delta(), finish_reason="stop")],
                 )
                 yield f"data: {chunk.model_dump_json()}\n\n"
                 yield "data: [DONE]\n\n"
@@ -207,16 +219,14 @@ def create_app(args):
                 model=request.model,
                 choices=[
                     ChatChoice(
-                        index=0,
-                        message=ChatMessage(role="assistant", content=response_text),
-                        finish_reason="stop"
+                        index=0, message=ChatMessage(role="assistant", content=response_text), finish_reason="stop"
                     )
                 ],
                 usage={
                     "prompt_tokens": input_len,
                     "completion_tokens": len(new_tokens),
-                    "total_tokens": input_len + len(new_tokens)
-                }
+                    "total_tokens": input_len + len(new_tokens),
+                },
             )
 
     @app.post("/v1/completions")
@@ -255,7 +265,7 @@ def create_app(args):
                         id=request_id,
                         created=created,
                         model=request.model,
-                        choices=[CompletionChoice(index=0, text=new_text, finish_reason=None)]
+                        choices=[CompletionChoice(index=0, text=new_text, finish_reason=None)],
                     )
                     # Note: CompletionResponse usually has object="text_completion", reusing model is fine
                     yield f"data: {chunk.model_dump_json()}\n\n"
@@ -264,7 +274,7 @@ def create_app(args):
                     id=request_id,
                     created=created,
                     model=request.model,
-                    choices=[CompletionChoice(index=0, text="", finish_reason="stop")]
+                    choices=[CompletionChoice(index=0, text="", finish_reason="stop")],
                 )
                 yield f"data: {chunk.model_dump_json()}\n\n"
                 yield "data: [DONE]\n\n"
@@ -284,40 +294,43 @@ def create_app(args):
             return CompletionResponse(
                 id=f"cmpl-{uuid.uuid4()}",
                 model=request.model,
-                choices=[
-                    CompletionChoice(
-                        index=0,
-                        text=text,
-                        finish_reason="stop"
-                    )
-                ],
+                choices=[CompletionChoice(index=0, text=text, finish_reason="stop")],
                 usage={
                     "prompt_tokens": inputs.input_ids.shape[1],
                     "completion_tokens": len(outputs[0]) - inputs.input_ids.shape[1],
-                    "total_tokens": len(outputs[0])
-                }
+                    "total_tokens": len(outputs[0]),
+                },
             )
+
     return app
 
-def main():
-    parser = configargparse.ArgParser(default_config_files=["config.yml"],
-                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add('-c', '--config', required=False, is_config_file=True, help='config file path')
 
-    group = parser.add_argument_group('HTTP Server')
+def main():
+    parser = configargparse.ArgParser(
+        default_config_files=["config.yml"], formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add("-c", "--config", required=False, is_config_file=True, help="config file path")
+
+    group = parser.add_argument_group("HTTP Server")
     group.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind the server to")
     group.add_argument("--port", type=int, default=8000, help="Port to bind the server to")
 
-    model_group = parser.add_argument_group('Model')
+    model_group = parser.add_argument_group("Model")
     model_group.add_argument("--model", type=str, required=True, help="Model name or path to serve")
     model_group.add_argument("--revision", type=str, default="main", help="Model revision")
     model_group.add_argument("--token", type=str, default=None, help="Hugging Face hub auth token")
     model_group.add_argument("--torch_dtype", type=str, default="auto", help="Data type for the model")
 
-    swarm_group = parser.add_argument_group('Swarm')
-    swarm_group.add_argument('--initial_peers', type=str, nargs='+', required=False, default=PUBLIC_INITIAL_PEERS,
-                       help='Multiaddrs of one or more DHT peers from the target swarm')
-    swarm_group.add_argument('--connect_timeout', type=float, default=60, help='Timeout for connecting to the swarm')
+    swarm_group = parser.add_argument_group("Swarm")
+    swarm_group.add_argument(
+        "--initial_peers",
+        type=str,
+        nargs="+",
+        required=False,
+        default=PUBLIC_INITIAL_PEERS,
+        help="Multiaddrs of one or more DHT peers from the target swarm",
+    )
+    swarm_group.add_argument("--connect_timeout", type=float, default=60, help="Timeout for connecting to the swarm")
 
     args = parser.parse_args()
 
@@ -325,6 +338,7 @@ def main():
 
     logger.info(f"Listening on {args.host}:{args.port}")
     uvicorn.run(app, host=args.host, port=args.port)
+
 
 if __name__ == "__main__":
     main()

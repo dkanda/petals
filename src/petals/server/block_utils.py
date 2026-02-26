@@ -1,11 +1,11 @@
-from typing import Optional, Union, Sequence
 import math
-import psutil
+from typing import Optional, Sequence, Union
 
+import psutil
 import torch
 from accelerate import init_empty_weights
-from transformers import PretrainedConfig, PreTrainedModel
 from hivemind.utils.logging import get_logger
+from transformers import PretrainedConfig, PreTrainedModel
 
 from petals.models.mixtral.block import WrappedMixtralBlock
 from petals.utils.convert_block import QuantType

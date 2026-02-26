@@ -3,6 +3,7 @@ Falcon intermediate layer
 Based on https://github.com/huggingface/transformers/blob/main/src/transformers/models/falcon/modeling_falcon.py
 See commit history for authorship.
 """
+
 import math
 from functools import partial
 from typing import Optional, Tuple
@@ -194,7 +195,7 @@ class OptimizedFalconAttention(FalconAttention):
             query_layer, key_layer, value_layer = self._optimized_split_heads(fused_qkv)
         else:
             # 3 x [batch_size, seq_length, num_heads, head_dim]
-            (query_layer, key_layer, value_layer) = self._split_heads(fused_qkv)
+            query_layer, key_layer, value_layer = self._split_heads(fused_qkv)
 
         num_kv_heads = self.num_heads
         batch_size, query_length, _, _ = query_layer.shape
