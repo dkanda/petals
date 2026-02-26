@@ -4,11 +4,16 @@ from contextlib import suppress
 
 import psutil
 import pytest
-from hivemind.utils.crypto import RSAPrivateKey
-from hivemind.utils.logging import get_logger
-from hivemind.utils.mpfuture import MPFuture
-
-logger = get_logger(__name__)
+try:
+    from hivemind.utils.crypto import RSAPrivateKey
+    from hivemind.utils.logging import get_logger
+    from hivemind.utils.mpfuture import MPFuture
+    logger = get_logger(__name__)
+except ImportError:
+    import logging
+    logger = logging.getLogger(__name__)
+    RSAPrivateKey = None
+    MPFuture = None
 
 
 @pytest.fixture
@@ -31,8 +36,9 @@ def event_loop():
 def cleanup_children():
     yield
 
-    with RSAPrivateKey._process_wide_key_lock:
-        RSAPrivateKey._process_wide_key = None
+    if RSAPrivateKey is not None:
+        with RSAPrivateKey._process_wide_key_lock:
+            RSAPrivateKey._process_wide_key = None
 
     gc.collect()  # Call .__del__() for removed objects
 
@@ -47,4 +53,5 @@ def cleanup_children():
             with suppress(psutil.NoSuchProcess):
                 child.kill()
 
-    MPFuture.reset_backend()
+    if MPFuture is not None:
+        MPFuture.reset_backend()
