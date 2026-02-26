@@ -1,0 +1,25 @@
+name: Jules TODO Burn Down
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  kickoff_jules:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Jules to find and fix next TODO
+        run: |
+          curl https://jules.googleapis.com/v1alpha/sessions \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Goog-Api-Key: ${{ secrets.JULES_API_KEY }}" \
+            -d '{
+              "prompt": "Read TODO.md. Identify the first incomplete item. If the item is a high-level feature, rewrite TODO.md to break that item into smaller, actionable sub-tasks, then commit that change immediately. Proceed to implement the first (or next) actionable sub-task. Follow all architectural patterns defined in AGENTS.md. After implementation, run the existing test suite and ensure all cases pass. Finally, update TODO.md by marking the completed task as 'Done' before submitting your PR.",
+              "sourceContext": {
+                "source": "sources/github/${{ github.repository }}",
+                "githubRepoContext": { "startingBranch": "main" }
+              },
+              "title": "Post-Merge Auto Burn-Down"
+            }'
