@@ -26,7 +26,7 @@ from petals.constants import DTYPE_MAP, PUBLIC_INITIAL_PEERS
 from petals.data_structures import CHAIN_DELIMITER, UID_DELIMITER, ModelInfo, ServerInfo, ServerState, parse_uid
 from petals.server import block_selection
 from petals.server.backend import TransformerBackend, merge_inference_pools_inplace
-from petals.server.block_utils import get_block_size, resolve_block_dtype
+from petals.server.block_utils import estimate_num_blocks, get_block_size, resolve_block_dtype
 from petals.server.from_pretrained import load_pretrained_block
 from petals.server.handler import TransformerConnectionHandler
 from petals.server.memory_cache import MemoryCache
@@ -204,6 +204,7 @@ class Server:
         # For attention cache in GPU or RAM
         if attn_cache_tokens is None:
             attn_cache_tokens = 16384 if is_multiquery_attn else 4096
+        self.attn_cache_tokens = attn_cache_tokens
         cache_values_per_block = 2 * self.block_config.hidden_size * attn_cache_tokens
         cache_values_per_block //= self.block_config.num_key_value_groups
         self._cache_bytes_per_block = cache_values_per_block * get_size_in_bytes(self.torch_dtype)
@@ -273,65 +274,18 @@ class Server:
         self.stop = threading.Event()
 
     def _choose_num_blocks(self) -> int:
-        assert self.device.type in ("cuda", "mps"), (
-            "GPU is not available. If you want to run a CPU-only server, please specify --num_blocks. "
-            "CPU-only servers in the public swarm are discouraged since they are much slower"
+        return estimate_num_blocks(
+            self.block_config,
+            self.device,
+            self.torch_dtype,
+            self.quant_type,
+            self.tensor_parallel_devices,
+            self.attn_cache_tokens,
+            self.adapters,
+            self.token,
+            self.cache_dir,
+            self.max_disk_space,
         )
-        num_devices = len(self.tensor_parallel_devices) if self.tensor_parallel_devices else 1
-
-        if num_devices > 1:
-            assert self.device.type == "cuda", f"Tensor parallelism is not supported on {self.device.type.upper()}"
-            memory_per_device = tuple(
-                torch.cuda.get_device_properties(device).total_memory for device in self.tensor_parallel_devices
-            )
-            total_memory = min(memory_per_device) * num_devices
-            if max(memory_per_device) / min(memory_per_device) > 1.5:
-                raise ValueError(
-                    "GPU devices have highly uneven memory, which makes tensor parallelism inefficient. "
-                    "Please launch individual servers on each GPU or set --num_blocks manually to "
-                    "override this exception."
-                )
-        elif self.device.type == "cuda":
-            total_memory = torch.cuda.get_device_properties(self.device).total_memory
-        else:
-            total_memory = psutil.virtual_memory().total
-
-        gib = 1024**3
-        # Estimate of GPU memory used in rpc_backward (2 GiB for BLOOM, proportional for other models)
-        autograd_memory = 2 * gib * num_devices / 14336 * self.block_config.hidden_size
-
-        block_size = get_block_size(self.block_config, "memory", dtype=self.torch_dtype, quant_type=self.quant_type)
-        total_memory_per_block = block_size + self._cache_bytes_per_block
-        if self.adapters:
-            # Delay import of petals.utils.peft to avoid unnecessary import of bitsandbytes
-            from petals.utils.peft import estimate_adapter_memory_per_block
-
-            total_memory_per_block += estimate_adapter_memory_per_block(
-                self.block_config,
-                self.torch_dtype,
-                self.adapters,
-                token=self.token,
-                cache_dir=self.cache_dir,
-                max_disk_space=self.max_disk_space,
-            )
-
-        num_blocks = math.floor((total_memory - autograd_memory) / total_memory_per_block)
-        if num_blocks < 1:
-            logger.error(
-                f"Your GPU does not have enough memory to serve at least one block. "
-                f"Available memory: {total_memory / gib:.2f} GiB, "
-                f"estimated memory per block: {total_memory_per_block / gib:.2f} GiB, "
-                f"autograd overhead: {autograd_memory / gib:.2f} GiB. "
-                f"Please decrease --attn_cache_tokens or make other changes to free up your GPU memory."
-            )
-            raise ValueError("Not enough GPU memory to serve at least one block")
-
-        num_blocks = min(num_blocks, self.block_config.num_hidden_layers)
-        logger.info(
-            f"Server will fill your GPU memory with {num_blocks} transformer blocks. "
-            f"If you want to leave some free GPU memory, please specify a lesser --num_blocks manually"
-        )
-        return num_blocks
 
     def run(self):
         while True:
