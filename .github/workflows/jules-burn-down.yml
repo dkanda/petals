@@ -16,7 +16,7 @@ jobs:
             -H "Content-Type: application/json" \
             -H "X-Goog-Api-Key: ${{ secrets.JULES_API_KEY }}" \
             -d '{
-              "prompt": "Read TODO.md. Identify the first incomplete item. If the item is a high-level feature, rewrite TODO.md to break that item into smaller, actionable sub-tasks, then commit that change immediately. Proceed to implement the first (or next) actionable sub-task. Follow all architectural patterns defined in AGENTS.md. After implementation, run the existing test suite and ensure all cases pass. Finally, update TODO.md by marking the completed task as 'Done' before submitting your PR.",
+              "prompt": "Read TODO.md and identify the first incomplete item. If the item is a high-level feature, update TODO.md by breaking that item into smaller, actionable sub-tasks.Then, implement the first actionable sub-task found in the updated list. Adhere strictly to the architectural patterns in AGENTS.md.Once the code is written, run the project's test suite to verify the fix. Finally, mark the specific sub-task as 'Done' in TODO.md before submitting the cumulative changes as a single Pull Request.",
               "sourceContext": {
                 "source": "sources/github/${{ github.repository }}",
                 "githubRepoContext": { "startingBranch": "main" }
