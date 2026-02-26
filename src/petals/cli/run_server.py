@@ -79,6 +79,13 @@ def main():
                        help='Multiaddrs of one or more DHT peers from the target swarm. Default: connects to the public swarm')
     peers_group.add_argument('--new_swarm', action='store_true',
                        help='Start a new private swarm (i.e., do not connect to any initial peers)')
+
+    # Do not add to peers_group to avoid mutual exclusion conflict
+    # These are handled manually in the code
+    net_group.add_argument('--mode', type=str, default='default', choices=['default', 'home-coordinator', 'home-worker'],
+                       help='Simplified home swarm launcher mode')
+    net_group.add_argument('--join', type=str, required=False, help='Join code for home-worker mode')
+
     net_group.add_argument("--skip_reachability_check", action='store_true',
                         help="Skip checking this server's reachability via health.petals.dev "
                              "when connecting to the public swarm. If you connect to a private swarm, "
@@ -171,6 +178,12 @@ def main():
 
     args["converted_model_name_or_path"] = args.pop("model") or args["converted_model_name_or_path"]
 
+    # Remove 'mode' and 'join' from args before passing to Server
+    # We must handle the case where 'mode' or 'join' are not in args if they were not added to parser
+    # But here they are added. However, to be safe and clear.
+    mode = args.pop("mode", "default")
+    join_code = args.pop("join", None)
+
     host_maddrs = args.pop("host_maddrs")
     port = args.pop("port")
     if port is not None:
@@ -204,8 +217,14 @@ def main():
         max_disk_space, (int, type(None))
     ), "Unrecognized value for --max_disk_space. Correct examples: 1.5GB or 1500MB or 1572864000 (bytes)"
 
-    if args.pop("new_swarm"):
+    new_swarm = args.pop("new_swarm")
+    if new_swarm or mode == "home-coordinator":
         args["initial_peers"] = []
+    elif mode == "home-worker":
+        if not join_code:
+            print("Error: --join code is required for --mode home-worker", file=sys.stderr)
+            sys.exit(1)
+        args["initial_peers"] = [join_code]
 
     quant_type = args.pop("quant_type")
     if quant_type is not None:
@@ -224,6 +243,24 @@ def main():
         compression=compression,
         max_disk_space=max_disk_space,
     )
+
+    if mode == "home-coordinator":
+        # Print join code
+        # A join code is just one of the visible multiaddrs of this server
+        # We need to wait for DHT to start to get the actual multiaddrs
+        # Server.run() is blocking, so we can't print after it starts easily unless we use a callback or log it.
+        # However, Server initializes DHT in __init__, so we can access it here.
+        visible_maddrs = server.dht.get_visible_maddrs()
+        if visible_maddrs:
+            join_code = str(visible_maddrs[0])
+            print("\n" + "=" * 80)
+            print(f"  Home Swarm Coordinator Started!")
+            print(f"  To join this swarm from another device, run:")
+            print(f"    python -m petals.cli.run_server --mode home-worker --join {join_code} ...")
+            print("=" * 80 + "\n")
+        else:
+            logger.warning("Could not determine visible multiaddrs for join code.")
+
     try:
         server.run()
     except KeyboardInterrupt:
