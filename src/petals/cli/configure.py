@@ -1,12 +1,14 @@
 import os
 import sys
+
 import torch
 import yaml
 from transformers import AutoConfig
+
 from petals.constants import PUBLIC_INITIAL_PEERS
-from petals.utils.convert_block import QuantType
 from petals.server.block_utils import estimate_num_blocks, resolve_block_dtype
 from petals.utils.auto_config import AutoDistributedConfig
+from petals.utils.convert_block import QuantType
 
 # Popular models list
 POPULAR_MODELS = [
@@ -16,6 +18,7 @@ POPULAR_MODELS = [
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
     "bigscience/bloom",
 ]
+
 
 def run_wizard():
     print("Welcome to Petals Configuration Wizard!")
@@ -41,7 +44,7 @@ def run_wizard():
         if choice.isdigit():
             idx = int(choice)
             if 1 <= idx <= len(POPULAR_MODELS):
-                model_name = POPULAR_MODELS[idx-1]
+                model_name = POPULAR_MODELS[idx - 1]
                 break
             elif idx == 0:
                 model_name = input("Enter custom model name (e.g. meta-llama/Llama-2-70b-hf): ").strip()
@@ -85,7 +88,7 @@ def run_wizard():
             subchoice = input("Select (default: a): ").strip().lower()
             if not subchoice or subchoice == "a":
                 new_swarm = True
-                initial_peers = [] # logic for new swarm
+                initial_peers = []  # logic for new swarm
                 break
             elif subchoice == "b":
                 peers = input("Enter one or more initial peers (comma separated): ").strip()
@@ -148,7 +151,7 @@ def run_wizard():
         block_config = AutoDistributedConfig.from_pretrained(model_name, use_auth_token=token)
 
         # Prepare arguments for estimation
-        device = torch.device(selected_devices[0]) # Use first device for estimation logic base
+        device = torch.device(selected_devices[0])  # Use first device for estimation logic base
         # If multiple devices, estimate handles it via tensor_parallel_devices arg
 
         # Determine defaults
@@ -168,7 +171,7 @@ def run_wizard():
             quant_type=quant_type,
             tensor_parallel_devices=tp_devices,
             attn_cache_tokens=attn_cache_tokens,
-            token=token
+            token=token,
         )
         print(f"Estimated number of blocks: {num_blocks}")
     except Exception as e:
@@ -208,6 +211,7 @@ def run_wizard():
     print("Configuration saved to config.yml")
     print("You can now run the server with:")
     print("  python -m petals.cli.run_server")
+
 
 if __name__ == "__main__":
     run_wizard()

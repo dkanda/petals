@@ -26,7 +26,8 @@ def main():
             run_wizard()
         else:
             print(
-                "To run Petals server non-interactively, please provide arguments or create config.yml.", file=sys.stderr
+                "To run Petals server non-interactively, please provide arguments or create config.yml.",
+                file=sys.stderr,
             )
             print("Run with --help for details.", file=sys.stderr)
             sys.exit(1)

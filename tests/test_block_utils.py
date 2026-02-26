@@ -1,9 +1,12 @@
 import unittest
 from unittest.mock import MagicMock, patch
+
 import torch
 from transformers import PretrainedConfig
+
 from petals.server.block_utils import estimate_num_blocks
 from petals.utils.convert_block import QuantType
+
 
 class TestBlockUtils(unittest.TestCase):
     def setUp(self):

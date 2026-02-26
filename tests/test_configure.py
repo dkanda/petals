@@ -1,9 +1,12 @@
-import unittest
-from unittest.mock import MagicMock, patch, mock_open
-import sys
 import os
+import sys
+import unittest
+from unittest.mock import MagicMock, mock_open, patch
+
 import yaml
+
 from petals.cli.configure import run_wizard
+
 
 class TestConfigure(unittest.TestCase):
     @patch("builtins.input")
@@ -13,7 +16,16 @@ class TestConfigure(unittest.TestCase):
     @patch("torch.cuda.device_count")
     @patch("torch.cuda.is_available")
     @patch("builtins.open", new_callable=mock_open)
-    def test_wizard_defaults(self, mock_file, mock_cuda_available, mock_device_count, mock_get_device_properties, mock_config, mock_estimate, mock_input):
+    def test_wizard_defaults(
+        self,
+        mock_file,
+        mock_cuda_available,
+        mock_device_count,
+        mock_get_device_properties,
+        mock_config,
+        mock_estimate,
+        mock_input,
+    ):
         # Mock inputs:
         # 1. Model: default (enter)
         # 2. Swarm: default (enter) -> public
@@ -56,7 +68,16 @@ class TestConfigure(unittest.TestCase):
     @patch("torch.cuda.device_count")
     @patch("torch.cuda.is_available")
     @patch("builtins.open", new_callable=mock_open)
-    def test_wizard_custom_private(self, mock_file, mock_cuda_available, mock_device_count, mock_get_device_properties, mock_config, mock_estimate, mock_input):
+    def test_wizard_custom_private(
+        self,
+        mock_file,
+        mock_cuda_available,
+        mock_device_count,
+        mock_get_device_properties,
+        mock_config,
+        mock_estimate,
+        mock_input,
+    ):
         # Mock inputs:
         # 1. Model: custom (0) -> "my/model"
         # 2. Swarm: private (2) -> new (a)

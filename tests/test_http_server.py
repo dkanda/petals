@@ -1,8 +1,11 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from fastapi.testclient import TestClient
+
+import pytest
 import torch
+from fastapi.testclient import TestClient
+
 from petals.cli.run_http_server import create_app
+
 
 class MockBatchEncoding(dict):
     def to(self, device):
@@ -11,6 +14,7 @@ class MockBatchEncoding(dict):
     @property
     def input_ids(self):
         return self["input_ids"]
+
 
 @pytest.fixture
 def client():
@@ -25,8 +29,9 @@ def client():
     args.host = "127.0.0.1"
     args.port = 8000
 
-    with patch("petals.cli.run_http_server.AutoTokenizer") as mock_tokenizer, \
-         patch("petals.cli.run_http_server.AutoDistributedModelForCausalLM") as mock_model:
+    with patch("petals.cli.run_http_server.AutoTokenizer") as mock_tokenizer, patch(
+        "petals.cli.run_http_server.AutoDistributedModelForCausalLM"
+    ) as mock_model:
 
         # Setup mock tokenizer
         tokenizer_instance = MagicMock()
@@ -49,6 +54,7 @@ def client():
         with TestClient(app) as c:
             yield c
 
+
 def test_list_models(client):
     response = client.get("/v1/models")
     assert response.status_code == 200
@@ -57,22 +63,20 @@ def test_list_models(client):
     assert len(data["data"]) == 1
     assert data["data"][0]["id"] == "test-model"
 
+
 def test_chat_completions(client):
-    response = client.post("/v1/chat/completions", json={
-        "model": "test-model",
-        "messages": [{"role": "user", "content": "hello"}]
-    })
+    response = client.post(
+        "/v1/chat/completions", json={"model": "test-model", "messages": [{"role": "user", "content": "hello"}]}
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["object"] == "chat.completion"
     assert len(data["choices"]) == 1
     assert data["choices"][0]["message"]["content"] == "generated text"
 
+
 def test_completions(client):
-    response = client.post("/v1/completions", json={
-        "model": "test-model",
-        "prompt": "hello"
-    })
+    response = client.post("/v1/completions", json={"model": "test-model", "prompt": "hello"})
     assert response.status_code == 200
     data = response.json()
     assert data["object"] == "text_completion"
