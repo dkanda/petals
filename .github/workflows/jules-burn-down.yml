@@ -18,8 +18,9 @@ jobs:
             -d '{
               "prompt": "Read TODO.md and identify the first incomplete item. If the item is a high-level feature, update TODO.md by breaking that item into smaller, actionable sub-tasks.Then, implement the first actionable sub-task found in the updated list. Adhere strictly to the architectural patterns in AGENTS.md.Once the code is written, run the project's test suite to verify the fix. Finally, mark the specific sub-task as 'Done' in TODO.md before submitting the cumulative changes as a single Pull Request.",
               "sourceContext": {
-                "source": "sources/github/${{ github.repository }}",
+                "source": "sources/github/dkanda/petals",
                 "githubRepoContext": { "startingBranch": "main" }
               },
+              "automationMode": "AUTO_CREATE_PR",
               "title": "Post-Merge Auto Burn-Down"
             }'
