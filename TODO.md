@@ -11,13 +11,13 @@ The following TODO list outlines steps to make Petals accessible to non-technica
     *   [x] Map these endpoints to `petals.AutoDistributedModelForCausalLM` inference logic.
     *   [x] Support streaming responses (SSE).
 
-## 2. Interactive Configuration Wizard (High Priority)
+## 2. Interactive Configuration Wizard (High Priority) [DONE]
 *   **Goal**: Simplify the `run_server` process for non-technical users, removing the need to understand complex CLI flags.
 *   **Implementation**:
-    *   Create `petals configure` or an interactive mode for `petals.cli.run_server` (e.g., if no args provided).
-    *   Ask simple questions: "Do you want to host a public or private model?", "Which model?", "Which GPU?".
-    *   Auto-detect hardware (GPU VRAM) and suggest optimal block counts.
-    *   Save configuration to `config.yml` (already supported by `configargparse` but needs a writer).
+    *   [x] Create `petals configure` or an interactive mode for `petals.cli.run_server` (e.g., if no args provided).
+    *   [x] Ask simple questions: "Do you want to host a public or private model?", "Which model?", "Which GPU?".
+    *   [x] Auto-detect hardware (GPU VRAM) and suggest optimal block counts.
+    *   [x] Save configuration to `config.yml` (already supported by `configargparse` but needs a writer).
 
 ## 3. Simplified "Home Swarm" Launcher (Medium Priority)
 *   **Goal**: Allow a user to easily set up a private swarm across their home devices without manually managing DHT vs Compute nodes.

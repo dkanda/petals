@@ -1,5 +1,7 @@
 import argparse
 import logging
+import os
+import sys
 
 import configargparse
 import torch
@@ -17,6 +19,18 @@ logger = get_logger(__name__)
 
 
 def main():
+    if len(sys.argv) == 1 and not os.path.exists("config.yml"):
+        if sys.stdin.isatty():
+            from petals.cli.configure import run_wizard
+
+            run_wizard()
+        else:
+            print(
+                "To run Petals server non-interactively, please provide arguments or create config.yml.", file=sys.stderr
+            )
+            print("Run with --help for details.", file=sys.stderr)
+            sys.exit(1)
+
     # fmt:off
     parser = configargparse.ArgParser(default_config_files=["config.yml"],
                                       formatter_class=argparse.ArgumentDefaultsHelpFormatter)
