@@ -46,12 +46,12 @@ def validate_reachability(peer_id, wait_time: float = 7 * 60, retry_delay: float
 
     if response is None:
         raise RuntimeError(
-            f"Could not check server reachability, attempts={n_attempts}. "
+            f"Could not check server reachability for peer {peer_id}, attempts={n_attempts}. "
             f"Please check your internet connection or petals status page at https://health.petals.dev"
         )
 
     raise RuntimeError(
-        f"Server has not become reachable from the Internet:\n\n"
+        f"Server {peer_id} has not become reachable from the Internet:\n\n"
         f"{response['message']}\n\n"
         f"You need to fix your port forwarding and/or firewall settings. How to do that:\n\n"
         f"    1. Choose a specific port for the Petals server, for example, 31337.\n"
