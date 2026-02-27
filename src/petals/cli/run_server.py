@@ -48,6 +48,11 @@ def main():
     auth_group.add_argument("--use_auth_token", action="store_true", dest="token",
                        help="Read token saved by `huggingface-cli login")
 
+    mode_group = parser.add_argument_group("Mode")
+    mode_group.add_argument('--mode', type=str, default='default', choices=['default', 'home-coordinator', 'home-worker'],
+                        help="Run mode. 'default' for standard usage, 'home-coordinator' to start a new private swarm and print join code, 'home-worker' to join a private swarm using a join code.")
+    mode_group.add_argument('--join', type=str, default=None, help="Join code for connecting to a private swarm (only for home-worker mode)")
+
     serving_group = parser.add_argument_group("Serving")
     serving_group.add_argument('--num_blocks', type=int, default=None, help="The number of blocks to serve")
     serving_group.add_argument('--block_indices', type=str, default=None, help="Specific block indices to serve")
@@ -169,6 +174,26 @@ def main():
     args = vars(parser.parse_args())
     args.pop("config", None)
 
+    mode = args.pop("mode")
+    join_code = args.pop("join")
+
+    if mode == "home-coordinator":
+        args["new_swarm"] = True
+        args["initial_peers"] = []
+        if join_code:
+            logger.warning("Argument --join is ignored in home-coordinator mode")
+    elif mode == "home-worker":
+        if not join_code:
+            print("Error: --join <CODE> is required in home-worker mode", file=sys.stderr)
+            sys.exit(1)
+        args["initial_peers"] = [join_code]
+        args["new_swarm"] = False
+    elif mode == "default":
+        if join_code:
+             print("Error: --join <CODE> is only allowed in home-worker mode", file=sys.stderr)
+             sys.exit(1)
+
+
     args["converted_model_name_or_path"] = args.pop("model") or args["converted_model_name_or_path"]
 
     host_maddrs = args.pop("host_maddrs")
@@ -224,6 +249,23 @@ def main():
         compression=compression,
         max_disk_space=max_disk_space,
     )
+
+    if mode == "home-coordinator":
+        # In home-coordinator mode, we need to print the join code after the server starts
+        # Since server.run() blocks, we might need a way to get the addresses once it's up.
+        # However, server initialization creates the DHT, so we can access visible_maddrs immediately.
+
+        visible_maddrs = server.dht.get_visible_maddrs()
+        if visible_maddrs:
+            join_code = str(visible_maddrs[0]) # Use the first available address as the join code
+            print(f"\n{'='*80}")
+            print(f"  Your Private Swarm is Ready!")
+            print(f"  To join this swarm from another machine, run:")
+            print(f"      petals-server --mode home-worker --model {args['converted_model_name_or_path']} --join {join_code}")
+            print(f"{'='*80}\n")
+        else:
+             logger.warning("Could not determine visible multiaddrs to generate a join code.")
+
     try:
         server.run()
     except KeyboardInterrupt:
