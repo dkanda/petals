@@ -48,6 +48,12 @@ def main():
     auth_group.add_argument("--use_auth_token", action="store_true", dest="token",
                        help="Read token saved by `huggingface-cli login")
 
+    # Home Swarm Mode
+    mode_group = parser.add_argument_group("Home Swarm Mode")
+    mode_group.add_argument('--mode', type=str, choices=['default', 'home-coordinator', 'home-worker'], default='default',
+                       help="Simplified mode for home swarms. 'home-coordinator' starts a new private swarm and prints a join code. 'home-worker' joins an existing swarm using a code.")
+    mode_group.add_argument('--join', type=str, default=None, help="Join code (multiaddr) for connecting to a home coordinator (required for home-worker mode)")
+
     serving_group = parser.add_argument_group("Serving")
     serving_group.add_argument('--num_blocks', type=int, default=None, help="The number of blocks to serve")
     serving_group.add_argument('--block_indices', type=str, default=None, help="Specific block indices to serve")
@@ -171,6 +177,20 @@ def main():
 
     args["converted_model_name_or_path"] = args.pop("model") or args["converted_model_name_or_path"]
 
+    mode = args.pop("mode")
+    join_code = args.pop("join")
+
+    if mode == "home-coordinator":
+        args["new_swarm"] = True
+        args["initial_peers"] = []
+
+    elif mode == "home-worker":
+        if not join_code:
+            print("Error: --join <CODE> is required for home-worker mode", file=sys.stderr)
+            sys.exit(1)
+        args["initial_peers"] = [join_code]
+        args["new_swarm"] = False
+
     host_maddrs = args.pop("host_maddrs")
     port = args.pop("port")
     if port is not None:
@@ -224,6 +244,15 @@ def main():
         compression=compression,
         max_disk_space=max_disk_space,
     )
+
+    if mode == "home-coordinator":
+        visible_maddrs = server.dht.get_visible_maddrs()
+        print("\n" + "=" * 60)
+        print("HOME SWARM COORDINATOR STARTED")
+        print("To join this swarm, run the following command on other machines:")
+        print(f"\npetals-server --mode home-worker --join {visible_maddrs[0]}\n")
+        print("=" * 60 + "\n")
+
     try:
         server.run()
     except KeyboardInterrupt:
