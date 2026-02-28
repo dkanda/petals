@@ -19,11 +19,11 @@ The following TODO list outlines steps to make Petals accessible to non-technica
     *   [x] Auto-detect hardware (GPU VRAM) and suggest optimal block counts.
     *   [x] Save configuration to `config.yml` (already supported by `configargparse` but needs a writer).
 
-## 3. Simplified "Home Swarm" Launcher (Medium Priority)
+## 3. Simplified "Home Swarm" Launcher (Medium Priority) [DONE]
 *   **Goal**: Allow a user to easily set up a private swarm across their home devices without manually managing DHT vs Compute nodes.
 *   **Implementation**:
-    *   Add a `--mode home-coordinator` flag: Starts a DHT node + Compute Server and prints a "Join Code" (IP + multiaddr).
-    *   Add a `--mode home-worker --join <CODE>` flag: Automatically connects to the coordinator without needing full multiaddrs.
+    *   [x] Add a `--mode home-coordinator` flag: Starts a DHT node + Compute Server and prints a "Join Code" (IP + multiaddr).
+    *   [x] Add a `--mode home-worker --join <CODE>` flag: Automatically connects to the coordinator without needing full multiaddrs.
     *   Handle local network discovery (MDNS) if possible.
 
 ## 4. Local Web Dashboard (Medium Priority)
