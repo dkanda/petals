@@ -19,11 +19,14 @@ def test_server_info_from_tuple():
         ServerInfo.from_tuple((ServerState.ONLINE.value, 10.0, {"foo": "baz", "bar": "qux"}))
 
     # Malformed tuples that should raise errors
-    with pytest.raises(TypeError, match="info must be a tuple"):
+    with pytest.raises(TypeError, match="expected a 3-element tuple, got str"):
         ServerInfo.from_tuple("not a tuple")
 
-    with pytest.raises(ValueError, match="info must have at least 2 elements"):
-        ServerInfo.from_tuple((ServerState.ONLINE.value,))
+    with pytest.raises(TypeError, match="expected a 3-element tuple, got tuple of length 2"):
+        ServerInfo.from_tuple((ServerState.ONLINE.value, 10.0))
+
+    with pytest.raises(TypeError, match="expected a 3-element tuple, got tuple of length 4"):
+        ServerInfo.from_tuple((ServerState.ONLINE.value, 10.0, {}, None))
 
     with pytest.raises(TypeError, match="info\\[0\\] must be an int"):
         ServerInfo.from_tuple(("invalid state", 10.0, {}))
@@ -34,5 +37,5 @@ def test_server_info_from_tuple():
     with pytest.raises(TypeError, match="info\\[2\\] must be a dict"):
         ServerInfo.from_tuple((ServerState.ONLINE.value, 10.0, "not a dict"))
 
-    with pytest.raises(ValueError, match="Invalid server state: 999"):
+    with pytest.raises(ValueError, match="Invalid server state index: 999"):
         ServerInfo.from_tuple((999, 10.0, {}))
