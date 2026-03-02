@@ -24,7 +24,7 @@ The following TODO list outlines steps to make Petals accessible to non-technica
 *   **Implementation**:
     *   [x] Add a `--mode home-coordinator` flag: Starts a DHT node + Compute Server and prints a "Join Code" (IP + multiaddr).
     *   [x] Add a `--mode home-worker --join <CODE>` flag: Automatically connects to the coordinator without needing full multiaddrs.
-    *   Handle local network discovery (MDNS) if possible.
+    *   [x] Handle local network discovery (MDNS) if possible.
 
 ## 4. Local Web Dashboard (Medium Priority)
 *   **Goal**: Provide a visual interface for server status, replacing the scrolling terminal logs.
