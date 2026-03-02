@@ -32,11 +32,11 @@ The following TODO list outlines steps to make Petals accessible to non-technica
     *   Serve a simple HTML/JS dashboard from the server process (can be part of the HTTP API server or a separate thread).
     *   Visualize: Connection status, Block health, Inference throughput, GPU usage.
 
-## 5. Native Installers & Helpers (Low Priority)
+## 5. Native Installers & Helpers (Low Priority) [DONE]
 *   **Goal**: Remove the need for `pip` and Python environment management.
 *   **Implementation**:
-    *   Create one-click run scripts for Windows (`.bat`) and Mac (`.command`) that handle `venv` creation and `pip install`.
-    *   Investigate `PyInstaller` builds for a standalone binary.
+    *   [x] Create one-click run scripts for Windows (`.bat`) and Mac (`.command`) that handle `venv` creation and `pip install`.
+    *   [x] Investigate `PyInstaller` builds for a standalone binary.
 
 ## 6. Network Diagnostics Tool (Low Priority)
 *   **Goal**: Help users debug NAT/Firewall issues.
