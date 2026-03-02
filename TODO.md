@@ -38,8 +38,8 @@ The following TODO list outlines steps to make Petals accessible to non-technica
     *   Create one-click run scripts for Windows (`.bat`) and Mac (`.command`) that handle `venv` creation and `pip install`.
     *   Investigate `PyInstaller` builds for a standalone binary.
 
-## 6. Network Diagnostics Tool (Low Priority)
+## 6. Network Diagnostics Tool (Low Priority) [DONE]
 *   **Goal**: Help users debug NAT/Firewall issues.
 *   **Implementation**:
-    *   Enhance `reachability.py` to provide specific instructions based on the failure type (e.g., "Open port 31337 on your router").
-    *   Add a `petals check-network` command.
+    *   [x] Enhance `reachability.py` to provide specific instructions based on the failure type (e.g., "Open port 31337 on your router").
+    *   [x] Add a `petals check-network` command.
