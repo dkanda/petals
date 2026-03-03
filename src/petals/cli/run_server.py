@@ -2,6 +2,8 @@ import argparse
 import logging
 import os
 import sys
+import socket
+import time
 
 import configargparse
 import torch
@@ -222,8 +224,46 @@ def main():
         args["initial_peers"] = []
     elif mode == "home-worker":
         if not join_code:
-            print("Error: --join code is required for --mode home-worker", file=sys.stderr)
-            sys.exit(1)
+            try:
+                from zeroconf import ServiceBrowser, Zeroconf
+
+                class JoinCodeListener:
+                    def __init__(self):
+                        self.join_code = None
+
+                    def remove_service(self, zeroconf, type, name):
+                        pass
+
+                    def add_service(self, zeroconf, type, name):
+                        info = zeroconf.get_service_info(type, name)
+                        if info and b'join_code' in info.properties:
+                            self.join_code = info.properties[b'join_code'].decode('utf-8')
+
+                    def update_service(self, zeroconf, type, name):
+                        pass
+
+                zeroconf = Zeroconf()
+                listener = JoinCodeListener()
+                browser = ServiceBrowser(zeroconf, "_petals._tcp.local.", listener)
+
+                print("Looking for a home coordinator on the local network...")
+                for _ in range(50): # wait up to 5 seconds
+                    if listener.join_code:
+                        break
+                    time.sleep(0.1)
+
+                zeroconf.close()
+
+                if listener.join_code:
+                    join_code = listener.join_code
+                    print(f"Found coordinator. Using join code: {join_code}")
+                else:
+                    print("Error: Could not automatically discover a coordinator. --join code is required for --mode home-worker", file=sys.stderr)
+                    sys.exit(1)
+            except ImportError:
+                print("Error: zeroconf package is required for automatic discovery. Please install it or provide --join code.", file=sys.stderr)
+                sys.exit(1)
+
         args["initial_peers"] = [join_code]
 
     quant_type = args.pop("quant_type")
@@ -244,6 +284,8 @@ def main():
         max_disk_space=max_disk_space,
     )
 
+    zc = None
+    info = None
     if mode == "home-coordinator":
         # Print join code
         # A join code is just one of the visible multiaddrs of this server
@@ -258,6 +300,37 @@ def main():
             print(f"  To join this swarm from another device, run:")
             print(f"    python -m petals.cli.run_server --mode home-worker --join {join_code} ...")
             print("=" * 80 + "\n")
+
+            try:
+                from zeroconf import ServiceInfo, Zeroconf
+                import socket
+
+                # Get a local IP to use for mDNS properties
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                try:
+                    s.connect(('10.255.255.255', 1))
+                    ip = s.getsockname()[0]
+                except Exception:
+                    ip = '127.0.0.1'
+                finally:
+                    s.close()
+
+                info = ServiceInfo(
+                    "_petals._tcp.local.",
+                    "PetalsSwarm._petals._tcp.local.",
+                    addresses=[socket.inet_aton(ip)],
+                    port=port if port != 0 else 31337,
+                    properties={'join_code': join_code},
+                    server="petals.local.",
+                )
+                zc = Zeroconf()
+                zc.register_service(info)
+                logger.info("Announced Petals coordinator via mDNS")
+            except ImportError:
+                logger.warning("zeroconf package not found, mDNS discovery will not be available.")
+            except Exception as e:
+                logger.warning(f"Failed to announce Petals coordinator via mDNS: {e}")
+
         else:
             logger.warning("Could not determine visible multiaddrs for join code.")
 
@@ -266,6 +339,9 @@ def main():
     except KeyboardInterrupt:
         logger.info("Caught KeyboardInterrupt, shutting down")
     finally:
+        if zc is not None and info is not None:
+            zc.unregister_service(info)
+            zc.close()
         server.shutdown()
 
 
