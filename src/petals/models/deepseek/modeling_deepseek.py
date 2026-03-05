@@ -499,12 +499,11 @@ class DeepseekV3MoE(nn.Module):
                 list(sorted_tokens.split(input_split_sizes)),
             )
             tokens_per_expert_post_gather = tokens_per_expert_group.view(self.ep_size, self.experts_per_rank).sum(dim=0)
-            gatherd_idxs = np.zeros(shape=(gathered_tokens.shape[0],), dtype=np.int32)
-            s = 0
-            for i, k in enumerate(tokens_per_expert_group.cpu().numpy()):
-                gatherd_idxs[s : s + k] = i % self.experts_per_rank
-                s += k
-            gatherd_idxs = gatherd_idxs.argsort()
+            expert_ids = (
+                torch.arange(len(tokens_per_expert_group), device=tokens_per_expert_group.device)
+                % self.experts_per_rank
+            )
+            gatherd_idxs = torch.repeat_interleave(expert_ids, tokens_per_expert_group).argsort(stable=True)
             sorted_tokens = gathered_tokens[gatherd_idxs]
             tokens_per_expert = tokens_per_expert_post_gather
         tokens_per_expert = tokens_per_expert.cpu().numpy()
