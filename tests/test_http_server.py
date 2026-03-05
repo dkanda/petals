@@ -55,6 +55,14 @@ def client():
             yield c
 
 
+def test_status(client):
+    response = client.get("/api/v1/status")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["model"] == "test-model"
+    assert data["device"] == "cpu"
+
+
 def test_list_models(client):
     response = client.get("/v1/models")
     assert response.status_code == 200
