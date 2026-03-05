@@ -63,6 +63,13 @@ def test_status(client):
     assert data["device"] == "cpu"
 
 
+def test_dashboard(client):
+    response = client.get("/dashboard")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "Petals Server Dashboard" in response.text
+
+
 def test_list_models(client):
     response = client.get("/v1/models")
     assert response.status_code == 200
