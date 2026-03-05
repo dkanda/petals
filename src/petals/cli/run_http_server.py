@@ -150,6 +150,11 @@ def create_app(args):
     async def list_models():
         return ModelList(data=[ModelCard(id=args.model)])
 
+    @app.get("/api/v1/status")
+    async def status():
+        device_str = str(model.device) if hasattr(model, "device") else "unknown"
+        return {"model": args.model, "device": device_str}
+
     @app.post("/v1/chat/completions")
     async def chat_completions(request: ChatCompletionRequest):
         # Format prompts
