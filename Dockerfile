@@ -29,7 +29,7 @@ RUN pip install "setuptools<70" wheel "grpcio-tools<1.61" && \
     cd petals && \
     HIVEMIND_URL=$(grep "hivemind @ git+" setup.cfg | cut -d @ -f 2- | xargs) && \
     pip install --no-build-isolation "hivemind @ $HIVEMIND_URL" && \
-    pip install --no-cache-dir -e .
+    pip install --no-build-isolation --no-cache-dir -e .
 
 WORKDIR /home/petals/
 CMD bash
