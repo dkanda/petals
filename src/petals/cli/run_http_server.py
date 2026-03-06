@@ -13,7 +13,7 @@ import torch
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from hivemind.utils.logging import get_logger
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, TextIteratorStreamer
@@ -153,7 +153,37 @@ def create_app(args):
     @app.get("/api/v1/status")
     async def status():
         device_str = str(model.device) if hasattr(model, "device") else "unknown"
-        return {"model": args.model, "device": device_str}
+
+        connection_status = "Connected" if model is not None else "Disconnected"
+        block_health = "Healthy" if model is not None else "Unknown"
+        inference_throughput = "0 tokens/s"
+
+        gpu_usage = "N/A"
+        if model is not None and hasattr(model, "device") and hasattr(model.device, "type") and model.device.type == "cuda":
+            try:
+                allocated = torch.cuda.memory_allocated(model.device) / (1024 ** 3)
+                total = torch.cuda.get_device_properties(model.device).total_memory / (1024 ** 3)
+                gpu_usage = f"{allocated:.1f} / {total:.1f} GB"
+            except Exception:
+                pass
+
+        return {
+            "model": args.model,
+            "device": device_str,
+            "connection_status": connection_status,
+            "block_health": block_health,
+            "inference_throughput": inference_throughput,
+            "gpu_usage": gpu_usage
+        }
+
+    @app.get("/dashboard", response_class=HTMLResponse)
+    async def dashboard():
+        dashboard_path = os.path.join(os.path.dirname(__file__), "dashboard.html")
+        try:
+            with open(dashboard_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except FileNotFoundError:
+            raise HTTPException(status_code=404, detail="Dashboard not found")
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: ChatCompletionRequest):

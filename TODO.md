@@ -30,8 +30,8 @@ The following TODO list outlines steps to make Petals accessible to non-technica
 *   **Goal**: Provide a visual interface for server status, replacing the scrolling terminal logs.
 *   **Implementation**:
     *   [x] Create an API endpoint `/api/v1/status` in `src/petals/cli/run_http_server.py` returning basic server status (model name, device).
-    *   [ ] Serve a simple HTML/JS dashboard from the HTTP API server on the `/dashboard` path.
-    *   [ ] Fetch and visualize Connection status, Block health, Inference throughput, and GPU usage in the dashboard.
+    *   [x] Serve a simple HTML/JS dashboard from the HTTP API server on the `/dashboard` path.
+    *   [x] Fetch and visualize Connection status, Block health, Inference throughput, and GPU usage in the dashboard.
 
 ## 5. Native Installers & Helpers (Low Priority) [DONE]
 *   **Goal**: Remove the need for `pip` and Python environment management.

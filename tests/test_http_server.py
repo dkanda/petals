@@ -61,7 +61,28 @@ def test_status(client):
     data = response.json()
     assert data["model"] == "test-model"
     assert data["device"] == "cpu"
+    assert data["connection_status"] == "Connected"
+    assert data["block_health"] == "Healthy"
+    assert data["inference_throughput"] == "0 tokens/s"
+    assert data["gpu_usage"] == "N/A"
 
+def test_dashboard(client):
+    from unittest.mock import patch, mock_open
+
+    mock_html = "<html><body>Dashboard</body></html>"
+    with patch("builtins.open", mock_open(read_data=mock_html)):
+        response = client.get("/dashboard")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        assert response.text == mock_html
+
+def test_dashboard_not_found(client):
+    from unittest.mock import patch
+
+    with patch("builtins.open", side_effect=FileNotFoundError):
+        response = client.get("/dashboard")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Dashboard not found"
 
 def test_list_models(client):
     response = client.get("/v1/models")
