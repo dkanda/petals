@@ -13,7 +13,7 @@ import torch
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from hivemind.utils.logging import get_logger
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, TextIteratorStreamer
@@ -149,11 +149,49 @@ def create_app(args):
     @app.get("/v1/models", response_model=ModelList)
     async def list_models():
         return ModelList(data=[ModelCard(id=args.model)])
+    @app.get("/dashboard", response_class=HTMLResponse)
+    async def dashboard():
+        dashboard_path = os.path.join(os.path.dirname(__file__), "dashboard.html")
+        with open(dashboard_path, "r") as f:
+            return HTMLResponse(content=f.read())
 
     @app.get("/api/v1/status")
     async def status():
         device_str = str(model.device) if hasattr(model, "device") else "unknown"
-        return {"model": args.model, "device": device_str}
+
+        # In a real Petals swarm, we'd fetch this from the Server object.
+        # Since run_http_server.py runs the model directly using AutoDistributedModelForCausalLM
+        # rather than the full Server, some of these metrics are simplified or mocked.
+
+        # Connection status: If the model is loaded, it's connected (at least locally).
+        connection_status = "Online" if model is not None else "Offline"
+
+        # Block health: For AutoDistributedModelForCausalLM, we can consider blocks healthy if loaded.
+        block_health = "Healthy"
+
+        # Inference throughput: We can estimate this or leave as a placeholder if not tracked.
+        throughput = 0.0
+
+        # GPU Usage: Only if we have CUDA
+        gpu_usage = "N/A"
+        if torch.cuda.is_available() and "cuda" in device_str:
+            device_idx = model.device.index if model.device.index is not None else 0
+            try:
+                allocated = torch.cuda.memory_allocated(device_idx)
+                total = torch.cuda.get_device_properties(device_idx).total_memory
+                gpu_usage = f"{(allocated / total) * 100:.1f}% ({allocated / 1024**3:.1f} GB / {total / 1024**3:.1f} GB)"
+            except Exception:
+                gpu_usage = "Unknown"
+
+        return {
+            "model": args.model,
+            "device": device_str,
+            "connection_status": connection_status,
+            "block_health": block_health,
+            "throughput": throughput,
+            "gpu_usage": gpu_usage
+        }
+
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: ChatCompletionRequest):

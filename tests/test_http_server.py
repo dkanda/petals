@@ -55,12 +55,21 @@ def client():
             yield c
 
 
+def test_dashboard(client):
+    response = client.get("/dashboard")
+    assert response.status_code == 200
+    assert "Petals Server Status" in response.text
+
 def test_status(client):
     response = client.get("/api/v1/status")
     assert response.status_code == 200
     data = response.json()
     assert data["model"] == "test-model"
     assert data["device"] == "cpu"
+    assert "connection_status" in data
+    assert "block_health" in data
+    assert "throughput" in data
+    assert "gpu_usage" in data
 
 
 def test_list_models(client):
