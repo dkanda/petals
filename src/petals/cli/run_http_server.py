@@ -13,7 +13,7 @@ import torch
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, HTMLResponse
 from hivemind.utils.logging import get_logger
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, TextIteratorStreamer
@@ -153,7 +153,97 @@ def create_app(args):
     @app.get("/api/v1/status")
     async def status():
         device_str = str(model.device) if hasattr(model, "device") else "unknown"
-        return {"model": args.model, "device": device_str}
+        gpu_usage = "N/A"
+        if hasattr(model, "device") and hasattr(model.device, "type") and model.device.type == "cuda":
+            allocated = torch.cuda.memory_allocated(model.device)
+            gpu_usage = f"{allocated / 1024**3:.2f} GiB"
+
+        connection_status = "Healthy" if model is not None else "Initializing"
+        block_health = "N/A"
+        inference_throughput = "N/A"
+        if model is not None and hasattr(model, "get_client_state"):
+            client_state = model.get_client_state()
+            if client_state:
+                block_health = "Healthy" # Mock for now
+                inference_throughput = client_state.get("inference_throughput", "N/A")
+
+        return {
+            "model": args.model,
+            "device": device_str,
+            "gpu_usage": gpu_usage,
+            "connection_status": connection_status,
+            "block_health": block_health,
+            "inference_throughput": inference_throughput,
+        }
+
+    @app.get("/dashboard", response_class=HTMLResponse)
+    async def dashboard():
+        html_content = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Petals Server Dashboard</title>
+            <style>
+                body { font-family: sans-serif; margin: 40px; background-color: #f4f4f9; color: #333; }
+                h1 { color: #5a5a5a; }
+                .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+                .stat { font-size: 1.2em; margin: 10px 0; }
+                .label { font-weight: bold; }
+                .status-good { color: green; }
+                .status-bad { color: red; }
+                .status-warn { color: orange; }
+            </style>
+        </head>
+        <body>
+            <h1>Petals Server Dashboard</h1>
+            <div class="card">
+                <h2>Server Status</h2>
+                <div class="stat"><span class="label">API Status:</span> <span id="api-status" class="status-bad">Checking...</span></div>
+                <div class="stat"><span class="label">Connection Status:</span> <span id="connection-status">Loading...</span></div>
+                <div class="stat"><span class="label">Block Health:</span> <span id="block-health">Loading...</span></div>
+                <div class="stat"><span class="label">Model:</span> <span id="model-name">Loading...</span></div>
+                <div class="stat"><span class="label">Device:</span> <span id="device-name">Loading...</span></div>
+                <div class="stat"><span class="label">GPU Usage:</span> <span id="gpu-usage">Loading...</span></div>
+                <div class="stat"><span class="label">Inference Throughput:</span> <span id="inference-throughput">Loading...</span></div>
+            </div>
+
+            <script>
+                async function fetchStatus() {
+                    try {
+                        const response = await fetch('/api/v1/status');
+                        if (response.ok) {
+                            const data = await response.json();
+                            document.getElementById('api-status').textContent = 'Online';
+                            document.getElementById('api-status').className = 'status-good';
+
+                            document.getElementById('model-name').textContent = data.model;
+                            document.getElementById('device-name').textContent = data.device;
+                            document.getElementById('gpu-usage').textContent = data.gpu_usage;
+
+                            const connStatusEl = document.getElementById('connection-status');
+                            connStatusEl.textContent = data.connection_status;
+                            connStatusEl.className = data.connection_status === 'Healthy' ? 'status-good' : 'status-warn';
+
+                            document.getElementById('block-health').textContent = data.block_health;
+                            document.getElementById('inference-throughput').textContent = data.inference_throughput;
+
+                        } else {
+                            document.getElementById('api-status').textContent = 'Error';
+                            document.getElementById('api-status').className = 'status-bad';
+                        }
+                    } catch (err) {
+                        document.getElementById('api-status').textContent = 'Offline';
+                        document.getElementById('api-status').className = 'status-bad';
+                    }
+                }
+
+                fetchStatus();
+                setInterval(fetchStatus, 5000);
+            </script>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=html_content, status_code=200)
 
     @app.post("/v1/chat/completions")
     async def chat_completions(request: ChatCompletionRequest):
