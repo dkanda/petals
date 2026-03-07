@@ -22,6 +22,7 @@ from transformers.models.llama.modeling_llama import (
 )
 
 from petals.utils.cuda_graphs import make_inference_graphed_callable
+from petals.models.block_utils import ReorderCacheMixin
 
 
 def apply_rotary_pos_emb(q, k, cos, sin):
@@ -223,7 +224,7 @@ class OptimizedLlamaDecoderLayer(LlamaDecoderLayer):
         return outputs
 
 
-class WrappedLlamaBlock(OptimizedLlamaDecoderLayer):
+class WrappedLlamaBlock(OptimizedLlamaDecoderLayer, ReorderCacheMixin):
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -281,21 +282,9 @@ class WrappedLlamaBlock(OptimizedLlamaDecoderLayer):
     def _reorder_cache_from_bloom_to_llama(
         self, key_value: Tuple[torch.Tensor], batch_size: int, seq_length: int
     ) -> Tuple[torch.Tensor]:
-        key_states, value_states = key_value
-        key_states = key_states.permute(0, 2, 1)
-        key_states = key_states.view(
-            batch_size, self.self_attn.num_key_value_heads, seq_length, self.self_attn.head_dim
-        )
-        value_states = value_states.view(*key_states.shape)
-        return (key_states, value_states)
+        return self._reorder_cache_from_bloom(key_value, batch_size, seq_length)
 
     def _reorder_cache_from_llama_to_bloom(
         self, key_value: Tuple[torch.Tensor], batch_size: int, seq_length: int
     ) -> Tuple[torch.Tensor]:
-        key_states, value_states = key_value
-        value_states = value_states.view(
-            batch_size * self.self_attn.num_key_value_heads, seq_length, self.self_attn.head_dim
-        )
-        key_states = key_states.view(*value_states.shape)
-        key_states = key_states.permute(0, 2, 1)
-        return (key_states, value_states)
+        return self._reorder_cache_to_bloom(key_value, batch_size, seq_length)
