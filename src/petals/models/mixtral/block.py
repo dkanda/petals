@@ -9,8 +9,10 @@ from transformers.modeling_attn_mask_utils import (
 )
 from transformers.models.mixtral.modeling_mixtral import MixtralDecoderLayer
 
+from petals.models.block_utils import ReorderCacheMixin
 
-class WrappedMixtralBlock(MixtralDecoderLayer):
+
+class WrappedMixtralBlock(MixtralDecoderLayer, ReorderCacheMixin):
     def __init__(self, config: MixtralConfig, layer_idx: int):
         super().__init__(config, layer_idx)
 
@@ -87,27 +89,3 @@ class WrappedMixtralBlock(MixtralDecoderLayer):
             outputs = outputs[:-1] + (present_key_value,)
 
         return outputs
-
-    def _reorder_cache_from_bloom(
-        self, key_value: Tuple[torch.Tensor], batch_size: int, seq_length: int
-    ) -> Tuple[torch.Tensor]:
-        # TODO: Move to mixin
-        key_states, value_states = key_value
-        key_states = key_states.permute(0, 2, 1)
-        key_states = key_states.view(
-            batch_size, self.self_attn.num_key_value_heads, seq_length, self.self_attn.head_dim
-        )
-        value_states = value_states.view(*key_states.shape)
-        return (key_states, value_states)
-
-    def _reorder_cache_to_bloom(
-        self, key_value: Tuple[torch.Tensor], batch_size: int, seq_length: int
-    ) -> Tuple[torch.Tensor]:
-        # TODO: Move to mixin
-        key_states, value_states = key_value
-        value_states = value_states.view(
-            batch_size * self.self_attn.num_key_value_heads, seq_length, self.self_attn.head_dim
-        )
-        key_states = key_states.view(*value_states.shape)
-        key_states = key_states.permute(0, 2, 1)
-        return (key_states, value_states)
