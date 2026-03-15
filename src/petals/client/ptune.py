@@ -25,7 +25,7 @@ class PTuneMixin:
         if config.tuning_mode and "ptune" in config.tuning_mode:
             assert config.pre_seq_len > 0, "The number of prefix tokens must be > 0"
             self.pre_seq_len = config.pre_seq_len
-            self.prefix_tokens = torch.arange(self.pre_seq_len).long()
+            self.register_buffer("prefix_tokens", torch.arange(self.pre_seq_len).long())
 
             with force_non_empty_weights():
                 # Prompt embeddings and their optimizer stats are kept in float32 to increase ptune quality
@@ -33,8 +33,7 @@ class PTuneMixin:
                 if config.tuning_mode == "deep_ptune":
                     self.intermediate_prompt_embeddings = nn.Embedding(
                         self.pre_seq_len,
-                        config.num_hidden_layers * config.hidden_size,
-                        # ^-- TODO: should be num_hidden_layers - 1
+                        (config.num_hidden_layers - 1) * config.hidden_size,
                         dtype=torch.float32,
                     )
         elif config.tuning_mode:
@@ -50,11 +49,17 @@ class PTuneMixin:
             intermediate_prompts = intermediate_prompts.view(
                 batch_size,
                 self.pre_seq_len,
-                self.config.num_hidden_layers,
+                self.config.num_hidden_layers - 1,
                 self.config.hidden_size,
-                # TODO: should be num_hidden_layers - 1
             )
             intermediate_prompts = intermediate_prompts.permute([2, 0, 1, 3])
+
+            # Pad intermediate_prompts with a zero tensor for the first layer to match num_hidden_layers
+            first_layer_pad = torch.zeros(
+                1, batch_size, self.pre_seq_len, self.config.hidden_size,
+                device=intermediate_prompts.device, dtype=intermediate_prompts.dtype
+            )
+            intermediate_prompts = torch.cat([first_layer_pad, intermediate_prompts], dim=0)
         else:
             intermediate_prompts = DUMMY
 
