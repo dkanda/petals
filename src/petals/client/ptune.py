@@ -33,8 +33,7 @@ class PTuneMixin:
                 if config.tuning_mode == "deep_ptune":
                     self.intermediate_prompt_embeddings = nn.Embedding(
                         self.pre_seq_len,
-                        config.num_hidden_layers * config.hidden_size,
-                        # ^-- TODO: should be num_hidden_layers - 1
+                        (config.num_hidden_layers - 1) * config.hidden_size,
                         dtype=torch.float32,
                     )
         elif config.tuning_mode:
@@ -50,11 +49,21 @@ class PTuneMixin:
             intermediate_prompts = intermediate_prompts.view(
                 batch_size,
                 self.pre_seq_len,
-                self.config.num_hidden_layers,
+                self.config.num_hidden_layers - 1,
                 self.config.hidden_size,
-                # TODO: should be num_hidden_layers - 1
             )
             intermediate_prompts = intermediate_prompts.permute([2, 0, 1, 3])
+
+            # Pad the first layer
+            zero_pad = torch.zeros(
+                1,
+                batch_size,
+                self.pre_seq_len,
+                self.config.hidden_size,
+                device=intermediate_prompts.device,
+                dtype=intermediate_prompts.dtype
+            )
+            intermediate_prompts = torch.cat([zero_pad, intermediate_prompts], dim=0)
         else:
             intermediate_prompts = DUMMY
 
