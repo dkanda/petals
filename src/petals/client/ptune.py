@@ -33,8 +33,7 @@ class PTuneMixin:
                 if config.tuning_mode == "deep_ptune":
                     self.intermediate_prompt_embeddings = nn.Embedding(
                         self.pre_seq_len,
-                        config.num_hidden_layers * config.hidden_size,
-                        # ^-- TODO: should be num_hidden_layers - 1
+                        (config.num_hidden_layers - 1) * config.hidden_size,
                         dtype=torch.float32,
                     )
         elif config.tuning_mode:
@@ -50,11 +49,15 @@ class PTuneMixin:
             intermediate_prompts = intermediate_prompts.view(
                 batch_size,
                 self.pre_seq_len,
-                self.config.num_hidden_layers,
+                self.config.num_hidden_layers - 1,
                 self.config.hidden_size,
-                # TODO: should be num_hidden_layers - 1
             )
             intermediate_prompts = intermediate_prompts.permute([2, 0, 1, 3])
+
+            # The first layer's prompt is concatenated to the input via prompt_embeddings.
+            # For compatibility with RemoteSequential, we prepend a zero-padding tensor for the first layer.
+            zeros_for_first_layer = torch.zeros_like(intermediate_prompts[0:1])
+            intermediate_prompts = torch.cat([zeros_for_first_layer, intermediate_prompts], dim=0)
         else:
             intermediate_prompts = DUMMY
 
