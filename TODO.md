@@ -50,3 +50,10 @@ The following TODO list outlines steps to make Petals accessible to non-technica
 *   **Implementation**:
     *   [x] Extract `_reorder_cache_from_bloom` and `_reorder_cache_to_bloom` into a `ReorderCacheMixin` in `src/petals/models/block_utils.py`.
     *   [x] Update `Mixtral`, `DeepSeek`, and `Llama` blocks to use the mixin.
+
+## 8. Deep P-Tuning Optimization (High Priority) [DONE]
+*   **Goal**: Fix intermediate prompt embeddings layer sizes in Deep P-Tuning logic.
+*   **Implementation**:
+    *   [x] Update `intermediate_prompt_embeddings` to use `num_hidden_layers - 1` in `init_prompts`.
+    *   [x] Update `get_prompt` to reshape to `num_hidden_layers - 1` and prepend zero padding to maintain required sequence length.
+    *   [x] Add comprehensive unit tests in `tests/test_ptune.py`.
