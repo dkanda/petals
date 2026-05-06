@@ -13,7 +13,10 @@ from weakref import WeakMethod
 
 import dijkstar
 import numpy as np
-from hivemind import DHT, P2P, MSGPackSerializer, PeerID
+from hivemind.dht.dht import DHT
+from hivemind.p2p.p2p_daemon import P2P
+from hivemind.utils.serializer import MSGPackSerializer
+from hivemind.p2p.p2p_daemon_bindings.datastructures import PeerID
 from hivemind.dht.node import Blacklist
 from hivemind.moe.client.remote_expert_worker import RemoteExpertWorker
 from hivemind.proto import runtime_pb2
