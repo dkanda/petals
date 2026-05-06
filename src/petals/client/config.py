@@ -2,7 +2,7 @@ import dataclasses
 import os
 from typing import Optional, Sequence, Union
 
-from hivemind import PeerID
+from hivemind.p2p.p2p_daemon_bindings.datastructures import PeerID
 
 from petals.constants import PUBLIC_INITIAL_PEERS
 
