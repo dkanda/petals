@@ -50,3 +50,8 @@ The following TODO list outlines steps to make Petals accessible to non-technica
 *   **Implementation**:
     *   [x] Extract `_reorder_cache_from_bloom` and `_reorder_cache_to_bloom` into a `ReorderCacheMixin` in `src/petals/models/block_utils.py`.
     *   [x] Update `Mixtral`, `DeepSeek`, and `Llama` blocks to use the mixin.
+
+## 8. Miscellaneous [DONE]
+*   **Goal**: Clean up scattered inline `# TODO` items in codebase.
+*   **Implementation**:
+    *   [x] Fix layer counting logic in `deep_ptune` (`src/petals/client/ptune.py`) and remove associated inline `# TODO`s.
