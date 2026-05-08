@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any, Dict, Optional, Sequence, Tuple
 
 import pydantic.v1 as pydantic
-from hivemind import PeerID
+from hivemind.p2p.p2p_daemon_bindings.datastructures import PeerID
 from hivemind.moe.expert_uid import ExpertUID
 
 ModuleUID = str
