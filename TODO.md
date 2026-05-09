@@ -50,3 +50,8 @@ The following TODO list outlines steps to make Petals accessible to non-technica
 *   **Implementation**:
     *   [x] Extract `_reorder_cache_from_bloom` and `_reorder_cache_to_bloom` into a `ReorderCacheMixin` in `src/petals/models/block_utils.py`.
     *   [x] Update `Mixtral`, `DeepSeek`, and `Llama` blocks to use the mixin.
+
+## 8. Miscellaneous (Low Priority) [DONE]
+*   **Goal**: Resolve miscellaneous inline TODOs across the codebase.
+*   **Implementation**:
+    *   [x] Fix PTune intermediate prompt embedding dimensions to use `num_hidden_layers - 1` and prepend Layer 0 prompts in `src/petals/client/ptune.py`.
