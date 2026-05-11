@@ -1,0 +1,11 @@
+--- TODO.md
++++ TODO.md
+@@ -48,3 +48,8 @@
+     *   [x] Extract `_reorder_cache_from_bloom` and `_reorder_cache_to_bloom` into a `ReorderCacheMixin` in `src/petals/models/block_utils.py`.
+     *   [x] Update `Mixtral`, `DeepSeek`, and `Llama` blocks to use the mixin.
+
++## 8. Miscellaneous
++*   **Goal**: Address outstanding code enhancements and fixes.
++*   **Implementation**:
++    *   [x] Fix `intermediate_prompt_embeddings` initialization and view dimensions in `src/petals/client/ptune.py` to use `num_hidden_layers - 1`.
++
